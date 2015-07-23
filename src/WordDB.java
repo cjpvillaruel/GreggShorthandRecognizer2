@@ -15,6 +15,16 @@ public class WordDB {
 		   
 	   }
 	   
+	   public String getWord(int id) throws ClassNotFoundException, SQLException{
+		   String sql = "SELECT word FROM word where id='"+id+"'";
+		   ResultSet rs=  this.select(sql);
+		   String word="";
+		   while(rs.next()){
+				word=rs.getString("word");
+			}
+		   return word;
+	   }
+	   
 	   public ResultSet select(String sql) throws ClassNotFoundException{
 		   Connection conn = null;
 		   Statement stmt = null;

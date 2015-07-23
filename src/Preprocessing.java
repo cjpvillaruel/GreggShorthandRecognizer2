@@ -39,7 +39,7 @@ public class Preprocessing {
 	
 	public void removeBorder(Mat character){
 		int x,y;
-		int margin=5;
+		int margin=10;
 		int height= character.height();
 		int width= character.width();
 		for(y=0; y<width; y++){
@@ -127,7 +127,7 @@ public class Preprocessing {
 		
 	}
 
-	   public Point templateMatching(Mat img){
+	public Point templateMatching(Mat img){
 		   System.loadLibrary( Core.NATIVE_LIBRARY_NAME );
 		   int match_method=5;
 		   int max_Trackbar = 5;
@@ -192,8 +192,6 @@ public class Preprocessing {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-        
-        
        
 		for(int i=1 ; i <= fileNumber; i++){
 			int wordCount=0;
@@ -217,6 +215,7 @@ public class Preprocessing {
 					Rect letter= new Rect(x, y, BOXWIDTH, BOXHEIGHT);
 	        		Mat result = data.submat(letter);
 	        		removeBorder(result);
+	        		
 	        		try{
 		        		wordCount = new File(destinationPath+words[index]).listFiles().length+1;
 		        		//System.out.println(words[index]); 
@@ -232,8 +231,6 @@ public class Preprocessing {
 		}
 	}
 	public String getFeatures(String path, int index){
-		//read file
-		
 		//get feature:
 		/**
 		 * width and height of the contour (largest contour)
@@ -259,6 +256,7 @@ public class Preprocessing {
        // finding best bounding rectangle for a contour whose distance is closer to the image center that other ones
         double d_min = Double.MAX_VALUE;
         Rect rect_min = new Rect();
+        double area1=Double.MAX_VALUE;
         int i=0;
         MatOfPoint2f  approxCurve = new MatOfPoint2f();
         for (MatOfPoint contour : contours) { 	
@@ -267,6 +265,8 @@ public class Preprocessing {
             //Processing on mMOP2f1 which is in type MatOfPoint2f
             double approxDistance = Imgproc.arcLength(contour2f, true)*0.02;
             Imgproc.approxPolyDP(contour2f, approxCurve, approxDistance, true);
+            
+            area1 = Imgproc.contourArea(contour);
             //Convert back to MatOfPoint
             MatOfPoint points = new MatOfPoint( approxCurve.toArray() );
             // Get bounding rect of contour
@@ -292,8 +292,8 @@ public class Preprocessing {
         }
         float x= m00!=0? (float)(m01/m00):0;
         float y= m00!=0? (float)(m10/m00):0;
-        features=width+","+height+","+x+","+y+","+index;
-        features+="="+index+" 1:"+width+" 2:"+height+" 3:"+m00+" 4:"+m01;
+        features=width+","+height+","+x+","+y+","+area1+","+index;
+        features+="="+index+" 1:"+width+" 2:"+height+" 3:"+x+" 4:"+y+" 5:"+area1;
         //System.out.println(features);
         return features;
 	}
@@ -319,9 +319,136 @@ public class Preprocessing {
 		}
 		test+=1+"\n";
 	}
+	/**
+	 * Perform thinning on all images in a training/testing folder.
+	 * 
+	 *
+	 * @param  folderpath    e.g. images/training_words
+	 * 
+	 */
+	public void thinAllWords(String folderpath){
+		int offset=0;
+		//get words from db
+		String sql = "SELECT word, id FROM word LIMIT "+numClasses+ " OFFSET "+offset; 
+		String words[]= new String[numClasses];
+		int classes[]= new int[numClasses];
+		int index=0;
+        try {
+			ResultSet rs= db.select(sql);
+			while(rs.next()){
+				words[index]=rs.getString("word");
+				classes[index]= rs.getInt("id");
+				index++;
+			}
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+        
+        int number=0;
+		String data2="";
+		for(int j = 0 ; j < words.length ; j++){
+			System.out.println(words[j]);
+			//create folder
+			
+            boolean success = (new File(folderpath+"_thinned/"+words[j])).mkdirs();
+            
+			int files = new File(folderpath +"/"+words[j]).listFiles().length;
+			for(int k=1; k <= files; k++){
+				thinning(folderpath +"/"+words[j]+"/"+"word ("+k+").jpg");
+			}
+			
+		}
+	}
 	
-	public int getAllFeatures(String folderpath,String filename){
+	/**
+	 * Perform one thinning on an image
+	 * reference:
+	 *  http://opencv-code.com/quick-tips/implementation-of-guo-hall-thinning-algorithm/
+	 *
+	 * @param  path        e.g. images/training_words/a/word (1).jpg
+	 * 
+	 */
+	public void thinning(String path){
+		//read image
+		Mat word = Highgui.imread(path,Highgui.IMREAD_GRAYSCALE);
+		Mat bw= new Mat();
+		Imgproc.threshold(word, word, 200, 255, Imgproc.THRESH_BINARY);
+		//dilate
+		Mat structElement = Imgproc.getStructuringElement(Imgproc.MORPH_CROSS, new Size(3,3));
+		Imgproc.erode(word, word, structElement);
 		
+		//invert image 
+		Core.bitwise_not(word,word);
+//		Highgui.imwrite("images/thinned/orig.jpg",word);
+
+		Mat diff= new Mat();
+		Mat prev= Mat.zeros(word.size(), CvType.CV_8UC1);
+		int countSimilar=0, nonZeroCount=Core.countNonZero(diff);
+		
+		do{
+			Core.divide(255, word, word);
+			word=thinningGuoHallIteration(word, 0);
+			word=thinningGuoHallIteration(word, 1);
+			Core.absdiff(word, prev, diff);
+			word.copyTo(prev);
+			if(nonZeroCount == Core.countNonZero(diff))
+				countSimilar++;
+			else{
+				countSimilar=0;
+				nonZeroCount=Core.countNonZero(diff);
+			}
+		}while(countSimilar!= 10);
+		
+		Mat s= new Mat(word.size(),CvType.CV_8UC1,new Scalar(255));
+		
+		word= word.mul(s);
+		prev= prev.mul(s);
+		Core.bitwise_not(word,word);
+		String destpath= path.replace("words", "words_thinned");
+		Highgui.imwrite(destpath,word);
+	}
+	
+	/**
+	 * Perform one thinning iteration.
+	 * reference:
+	 *  http://opencv-code.com/quick-tips/implementation-of-guo-hall-thinning-algorithm/
+	 *
+	 * @param  img    Binary image with range = 0-1
+	 * @param  iter  0=even, 1=odd
+	 */
+	public Mat thinningGuoHallIteration(Mat img, int iter){	
+		Mat marker = Mat.zeros(img.size(), CvType.CV_8UC1);
+		for(int i=1;i< img.rows()-1;i++){
+			for(int j=1;j<img.cols()-1;j++){
+				int p2 = (int)img.get(i-1, j)[0];
+				int p3 = (int)img.get(i-1, j+1)[0];
+				int p4 = (int)img.get(i, j+1)[0];
+				int p5 = (int)img.get(i+1, j+1)[0];
+				int p6 = (int)img.get(i+1, j)[0];
+				int p7 = (int)img.get(i+1, j-1)[0];
+				int p8 = (int)img.get(i, j-1)[0]; 
+				int p9 = (int)img.get(i-1, j-1)[0];
+				
+				int C  = (~p2 & (p3 | p4)) + (~p4 & (p5 | p6)) +
+	                     (~p6 & (p7 | p8)) + (~p8 & (p9 | p2));
+	            int N1 = (p9 | p2) + (p3 | p4) + (p5 | p6) + (p7 | p8);
+	            int N2 = (p2 | p3) + (p4 | p5) + (p6 | p7) + (p8 | p9);
+	            int N  = N1 < N2 ? N1 : N2;
+	            int m  = iter == 0 ? ((p6 | p7 | ~p9) & p8) : ((p2 | p3 | ~p5) & p4);
+	            if (C == 1 && (N >= 2 && N <= 3) & m == 0)
+	                marker.put(i, j, 1);
+			}
+		}	
+		Core.bitwise_not(marker, marker);
+		Core.bitwise_and(img,marker, img);
+		return img;
+	}
+	public int getAllFeatures(String folderpath,String filename){
+
 		String test="";
 		int offset=0;
 		//get words from db
@@ -349,10 +476,10 @@ public class Preprocessing {
 		String data2="";
 		for(int j = 0 ; j < words.length ; j++){
 			System.out.println(j);
-			int files = new File(folderpath +words[j]).listFiles().length;
+			int files = new File(folderpath+"\\" +words[j]).listFiles().length;
 			for(int k=1; k <= files; k++){
 				
-				String[] str= this.getFeatures(folderpath +words[j]+"/"+"word ("+k+").jpg", classes[j]).split("=");
+				String[] str= this.getFeatures(folderpath+"\\" +words[j]+"\\"+"word ("+k+").jpg", classes[j]).split("=");
 				test+=str[0]+"\n";
 				data2+=str[1]+"\n";
 				number++;
@@ -399,22 +526,42 @@ public class Preprocessing {
 		// Read an image.
     	System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 		Preprocessing p= new Preprocessing();
-		//p.cropImages(1,"images/training_data/", "images/training_words/");
 		
+		/**
+		 * cropping all dataset
+		 * 
+		p.cropImages(1,"images/training_data/", "images/training_words/");
+		p.cropImages(2,"images/training_data/", "images/training_words/");
+		p.cropImages(3,"images/training_data/", "images/training_words/");
+		
+		p.cropImages(1,"images/testing_data/", "images/testing_words/");
+		p.cropImages(2,"images/testing_data/", "images/testing_words/");
+		p.cropImages(3,"images/testing_data/", "images/testing_words/");
+		
+		**/
+//		p.numClasses=30;
+//		p.thinAllWords("images/training_words");
+//		p.thinAllWords("images/testing_words");
 //		Mat a= new Mat(2,2, CvType.CV_32FC1);
 //		//p.convert();
 		
-//		ML ml= new ML();
+		ML ml= new ML(2400,920 , 30);
 //		ml.bayes();
 		//ml.svm();
 		//p.getFeatures("images/words/ache/word (1).jpg", 1);
 		//p.getFeatures("images/erosion.jpg", "word");
 		//p.getAllFeatures("images/training_words/", "training_data.txt");
 		//p.getAllFeatures("images/testing_words/", "testing_data.txt");
+		//p.thinning();
 		
 		
-		
-	
+//		Mat word = Highgui.imread("images/training_words/are/word (1).jpg",Highgui.IMREAD_GRAYSCALE);
+//		Mat bw= new Mat();
+//		Imgproc.threshold(word, word, 200, 255, Imgproc.THRESH_BINARY);
+		//dilate
+//		Mat structElement = Imgproc.getStructuringElement(Imgproc.MORPH_CROSS, new Size(3,3));
+//		Imgproc.erode(word, word, structElement);
+//		Highgui.imwrite("images/thinned/dilate.jpg",word);
 	}
 
 }
