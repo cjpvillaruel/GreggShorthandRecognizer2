@@ -63,9 +63,23 @@ public class ML {
 	   	
 	   	this.annTrain();
 	   	this.svmTrain();
-	   	this.bayesTrain();
-	   	
+	   	this.bayesTrain();  	
 	}
+	public ML(int training_samples, int classes, boolean isTraining){
+		
+		this.trainingSamples= training_samples;
+		this.classes= classes;
+		this.training_data= new Mat(this.trainingSamples,ATTRIBUTES,CvType.CV_32F);
+		this.training_classes= new Mat();
+		this.training_classes2= new Mat(this.trainingSamples,1,CvType.CV_32F);
+	   	this.training_classes= Mat.zeros(this.trainingSamples,this.classes,CvType.CV_32F);
+	   	this.readFile("training_data.txt", training_data, training_classes, training_classes2, true);
+	   	
+	   	this.annTrain();
+	   	this.svmTrain();
+	   	this.bayesTrain();  	
+	}
+
 
 	
 	public void initializeData(){

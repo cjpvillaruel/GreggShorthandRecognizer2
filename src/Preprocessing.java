@@ -164,6 +164,12 @@ public class Preprocessing {
 	       return matchLoc;
 	   }
 
+	/**
+	 * 
+	 * @param num		int      - dataset number
+	 * @param pathname  String   - source folder eg "images/training_data/" 
+	 * @param destinationPath String - destination folder eg "images/training_words/"
+	 */
 	public void cropImages(int num, String pathname, String destinationPath){
 		String path= pathname+num;
 		int count=0;
