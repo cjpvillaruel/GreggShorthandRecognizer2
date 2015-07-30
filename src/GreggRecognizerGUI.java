@@ -2,6 +2,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.FileDialog;
 import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.Image;
@@ -58,6 +59,9 @@ public class GreggRecognizerGUI extends JFrame {
 		this.setVisible(true); 
 		this.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
 		
+		
+		
+		
 	}
 	private void addComponents(){
 		mainPanel = new MainPanel();
@@ -106,6 +110,7 @@ public class GreggRecognizerGUI extends JFrame {
 		JButton preprocessButton;
 		Preprocessing preprocess;
 		JButton preprocessAll;
+		ClassyButton sample;
 		public PreprocessPanel(){
 			String[] list= {"1","2","3","4"};
 			setList= new JComboBox(list);
@@ -141,6 +146,9 @@ public class GreggRecognizerGUI extends JFrame {
 			this.add(preprocessAll);
 			preprocessAll.addActionListener(this);
 			
+			sample= new ClassyButton("hello", "orange");
+			this.add(sample);
+			this.setBackground(Color.WHITE);
 		}
 		@Override
 		
@@ -351,7 +359,7 @@ public class GreggRecognizerGUI extends JFrame {
 		String path;
 		WordDB db;
 		JTable table;
-		
+		FileDialog fd;
 		public RecognizerPanel(){
 			db= new WordDB();
 			this.setLayout(null);
@@ -390,6 +398,11 @@ public class GreggRecognizerGUI extends JFrame {
 			scroll.setBounds(350, 30, 230, 39);
 			
 			this.add(scroll);
+			
+			fd = new FileDialog(new JFrame(), "Choose a file", FileDialog.LOAD);
+			
+			fd.setDirectory("C:\\");
+			
 		}
 		private void displayResults(double[] results) throws ClassNotFoundException, SQLException{
 			//open database to fetch word
@@ -403,18 +416,20 @@ public class GreggRecognizerGUI extends JFrame {
 		public void actionPerformed(ActionEvent e) {
 			// TODO Auto-generated method stub
 			if(e.getSource()== loadButton){
-				int a= fileChooser.showOpenDialog(this);
-				if (a == JFileChooser.APPROVE_OPTION) {
-					File file = fileChooser.getSelectedFile();
-					  try {                
-					    	image = ImageIO.read(file);
-					    	ImageIcon imageIcon = new ImageIcon(image);
-					        jLabel.setIcon(imageIcon);
-					        jLabel.setText("");
-					        path= file.getPath();
-					    } catch (IOException ex) {
-					    }
-				}
+				//int a= fileChooser.showOpenDialog(this);
+				fd.setVisible(true);
+				
+				File file= new File(fd.getDirectory(), fd.getFile());
+
+				  try {                
+				    	image = ImageIO.read(file);
+				    	ImageIcon imageIcon = new ImageIcon(image);
+				        jLabel.setIcon(imageIcon);
+				        jLabel.setText("");
+				        path= file.getPath();
+				    } catch (IOException ex) {
+				    }
+
 			}
 			
 			else if(e.getSource()== rButton){
@@ -465,11 +480,17 @@ public class GreggRecognizerGUI extends JFrame {
 		ML mLearning;
 		Panel1 panel;
 		JTextField path;
+		
 		public TestPanel(Panel1 panel){
 			//this.setLayout(null);
 			this.setBorder(BorderFactory.createTitledBorder("Test"));
 			this.addComponents();
 			this.panel= panel;
+			
+			
+			 
+	      
+			
 		}
 		
 		private void addComponents(){
@@ -498,10 +519,12 @@ public class GreggRecognizerGUI extends JFrame {
 		@Override
 		public void actionPerformed(ActionEvent e) {
 			if(e.getSource()== selectFileButton){
+				
 				int a= fileChooser.showOpenDialog(this);
 				if (a == JFileChooser.APPROVE_OPTION) {
 					File file = fileChooser.getSelectedFile();
 					path.setText(file.getAbsolutePath());
+					
 				}
 			}
 			else if(e.getSource()== testButton){
