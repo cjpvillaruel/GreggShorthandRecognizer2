@@ -408,7 +408,6 @@ public class GreggRecognizerGUI extends JFrame {
 			//open database to fetch word
 			for(int i=0;i<3;i++){
 				table.setValueAt(db.getWord((int)results[i]), 0, i); 
-				
 			}
 			
 		}

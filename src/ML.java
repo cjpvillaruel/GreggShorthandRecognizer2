@@ -271,6 +271,7 @@ public class ML {
 	public double[] predict(Mat data, int classification) throws IOException{
 		//load ann
 
+		
 		 double results[]= new double[3];
 		 CvANN_MLP ann= new CvANN_MLP();
 		 ann.load("ann");
