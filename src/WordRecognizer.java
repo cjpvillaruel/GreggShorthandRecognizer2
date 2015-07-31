@@ -30,7 +30,7 @@ public class WordRecognizer {
 		word.annRes=db.getWord((int)results[0]);
 		word.svmRes= db.getWord((int)results[1]);
 		word.bnRes= db.getWord((int)results[2]);
-		//System.out.println(results[0] +" "+results[1]+" "+ results[2]);
+		
 	}
 	public Mat getFeature(Mat image){
 		Mat featuresMat= new Mat(1,5, CvType.CV_32F);

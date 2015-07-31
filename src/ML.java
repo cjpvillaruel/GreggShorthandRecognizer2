@@ -175,8 +175,6 @@ public class ML {
 			if(classification[i]== result[i]){
 				++correct;
 			}else ++incorrect;
-			
-			//System.out.println("result "+classification[i]+" "+result[i]);
 		}
 		System.out.println((float)correct/(correct+incorrect)*100);
 		System.out.println(correct+"//"+(correct+incorrect));

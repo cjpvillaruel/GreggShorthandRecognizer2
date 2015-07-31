@@ -33,6 +33,7 @@ public class Shorthand{
 		this.id= id;
 	}
 	public Shorthand(File file){
+		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 		this.file = file;
 		this.filepath = file.getAbsolutePath();
 		image= Highgui.imread(this.filepath,Highgui.IMREAD_GRAYSCALE);

@@ -490,7 +490,6 @@ public class Preprocessing {
 				data2+=str[1]+"\n";
 				number++;
 			}
-			
 		}
 	
 		//creating a file

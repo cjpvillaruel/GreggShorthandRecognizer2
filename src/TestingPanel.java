@@ -3,24 +3,36 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.Image;
+import java.awt.Scrollbar;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
 
 import javax.imageio.ImageIO;
 import javax.swing.ButtonGroup;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.ScrollPaneConstants;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableColumnModel;
+import javax.swing.table.TableModel;
 
 class TestingPanel extends JPanel implements ActionListener{
+	private static final int NUM_CLASSES=30;
 	private MainPanel1 card;
 	private JLabel title, heading, rLabel;
 	private JLabel selectLabel1,selectLabel2, selectData;
@@ -36,6 +48,12 @@ class TestingPanel extends JPanel implements ActionListener{
 	private JComboBox setList;
 	private JFileChooser srcFolder, destFolder,tFolder;
 	private Preprocessing p;
+	private WordDB db;
+	private ArrayList<Shorthand> testingSamples;
+	private WordRecognizer r;
+	private String[] wordClasses;
+	private JPanel resultsPanel, predictedPanel, cPanel, aPanel;
+	private JTable resultsTable, cTable, accuracyTable;
 	public TestingPanel(MainPanel1 card){
 		this.setBackground(Color.white);
 		this.setLayout(null);
@@ -43,6 +61,9 @@ class TestingPanel extends JPanel implements ActionListener{
 		addHeaderComponents();
 		addComponents();
 		p= new Preprocessing();
+		db= new WordDB();
+		testingSamples= new ArrayList<Shorthand>();
+		r= new WordRecognizer();
 	}
 	private void addComponents(){
 		//preprocess panel components
@@ -140,6 +161,73 @@ class TestingPanel extends JPanel implements ActionListener{
 		selectDest.addActionListener(this);
 		run.addActionListener(this);
 		crop.addActionListener(this);
+		
+		resultsPanel= new JPanel();
+		resultsPanel.setLayout(new CardLayout());
+		
+		predictedPanel= new JPanel();
+		predictedPanel.setLayout(null);
+		//initialize table
+		Image image;
+		try {
+			image = ImageIO.read(new File("images/data2/result_0.jpg"));
+			ImageIcon imageIcon = new ImageIcon(image);
+			String[] columnNames = {"Image","Acutal","ANN","SVM","BN"};
+			Object[] row= {imageIcon,"","" ,"", ""};
+		    Object[][] data = {row};
+		    TableModel model = new DefaultTableModel(data, columnNames);
+		    resultsTable = new JTable(model){
+	            //  Returning the Class of each column will allow different
+	            //  renderers to be used based on Class
+	            public Class getColumnClass(int column)
+	            {
+	                return getValueAt(0, column).getClass();
+	            }
+	        };
+	        resultsTable.setRowHeight(60);
+	        TableColumnModel columnModel = resultsTable.getColumnModel();
+	        columnModel.getColumn(0).setPreferredWidth(80);
+	        columnModel.getColumn(1).setPreferredWidth(25);
+	        columnModel.getColumn(2).setPreferredWidth(25);
+	        columnModel.getColumn(3).setPreferredWidth(25);
+	        columnModel.getColumn(4).setPreferredWidth(25);
+	        resultsTable.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+	        JScrollPane scroll = new JScrollPane(resultsTable);
+	        scroll.setBounds(5, 5, 385, 380);
+	        predictedPanel.add(scroll);
+	        
+	        
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		//create panel for confusion matrix
+		cPanel= new JPanel();
+		cPanel.setLayout(null);
+		cTable= new JTable(31,31);
+		JScrollPane scroll2= new JScrollPane(cTable);
+		scroll2.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS);
+		//scroll2.setBounds(5, 5, 385, 380);
+		//cPanel.add(scroll2);
+		JDialog d= new JDialog();
+		d.add(scroll2);
+		
+		//create panel and table for accuracy results
+		aPanel = new JPanel();
+		String[] columnNames = {"Word","ANN Precision","ANN Recall","SVM Precision","SVM Recall","BN Precision","BN Recall"};
+		Object[] row= {"","","" ,"", "","",""};
+	    Object[][] data = {row};
+	    TableModel model = new DefaultTableModel(data, columnNames);
+	    accuracyTable = new JTable(model);
+	    JScrollPane scroll3= new JScrollPane(accuracyTable);
+	    aPanel.add(scroll3);
+	    
+	    resultsPanel.add(aPanel, "Accuracy");
+		resultsPanel.add(cPanel, "Confusion");
+		resultsPanel.add(predictedPanel, "Predicted");
+		resultsPanel.setBounds(350, 150, 400, 400);
+		this.add(resultsPanel);
 	}
 	private void addHeaderComponents(){
 		this.title= new JLabel("Gregg Shorthand Recognizer");
@@ -174,6 +262,97 @@ class TestingPanel extends JPanel implements ActionListener{
 		navBar.setBounds(0,100,800, 40);
 		navBar.setBackground(new Color(0, 174, 239));
 		this.add(navBar);
+	}
+	
+	private void readImages(String folderpath){
+		String test="";
+		int offset=0;
+		//get words from db
+		String sql = "SELECT word, id FROM word LIMIT "+NUM_CLASSES+ " OFFSET "+offset; 
+		wordClasses= new String[NUM_CLASSES];
+		int classes[]= new int[NUM_CLASSES];
+		int index=0;
+        try {
+			ResultSet rs= db.select(sql);
+			while(rs.next()){
+				wordClasses[index]=rs.getString("word");
+				classes[index]= rs.getInt("id");
+				index++;
+			}
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}       
+        int number=0;
+		String data2="";
+		for(int j = 0 ; j < wordClasses.length ; j++){
+			System.out.println(j);
+			int files = new File(folderpath+"\\" +wordClasses[j]).listFiles().length;
+			for(int k=1; k <= files; k++){
+				File file= new File(folderpath+"\\" +wordClasses[j]+"\\"+"word ("+k+").jpg");
+				Shorthand word= new Shorthand(file, wordClasses[j], classes[j]);
+				testingSamples.add(word);
+			}
+		}
+	}
+	
+	/**
+	 * recognize each Shorthand samples in words (arraylist) 
+	 * using the WordRecognizerClass
+	 * 
+	 */
+	private void recognizeTestingData(){
+		for(int i=0;i<testingSamples.size();i++){
+			try {
+				Shorthand word=testingSamples.get(i);
+				r.recognize(word);
+				System.out.println(word.annRes +" "+word.svmRes+" "+ word.bnRes);
+			} catch (ClassNotFoundException | IOException | SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	private void deleteTableRows(){
+		DefaultTableModel dm = (DefaultTableModel)resultsTable.getModel();
+		int rowCount = dm.getRowCount();
+		//Remove rows one by one from the end of the table
+		for (int i = rowCount - 1; i >= 0; i--) {
+		    dm.removeRow(i);
+		}
+	}
+	/**
+	 * displays results of testing samples in a table
+	 * with rows: inputImage, actual, ANN classification,  SVM classification, BN classification, 
+	 */
+	private void displayResults(){
+		for(int i=0;i<testingSamples.size();i++){
+			Shorthand word= testingSamples.get(i);
+			Image image;
+			try {
+				image = ImageIO.read(word.file);
+				ImageIcon imageIcon = new ImageIcon(image);
+				Object[] row= {imageIcon,word.word,word.annRes ,word.svmRes, word.bnRes};
+				DefaultTableModel model = (DefaultTableModel)resultsTable.getModel();
+				model.addRow(row);	
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
+	}
+	
+	public void displayAccuracy(TestingResult res){
+		for(int i=0;i<wordClasses.length;i++){
+			Object[] row= {wordClasses[i],res.precisionANN[i],res.recallANN[i] ,res.precisionSVM[i],res.recallSVM[i] ,res.precisionBN[i],res.recallBN[i] };
+			DefaultTableModel model = (DefaultTableModel)accuracyTable.getModel();
+			model.addRow(row);	
+		}
 	}
 	@Override
 	public void actionPerformed(ActionEvent e) {
@@ -216,10 +395,22 @@ class TestingPanel extends JPanel implements ActionListener{
 	 	        ML train= new ML(trainingSamples, 30, true);
 			}
 			else if(test.isSelected()){
-				Preprocessing p= new Preprocessing(30);
-				int testingSamples= p.getAllFeatures(path, "testing_data");
-				System.out.println(testingSamples);
-				ML test = new ML( testingSamples, 30);
+//				Preprocessing p= new Preprocessing(30);
+//				int testingSamples= p.getAllFeatures(path, "testing_data");
+//				System.out.println(testingSamples);
+//				ML test = new ML( testingSamples, 30);
+				
+				//read images
+				this.readImages(path);
+				this.recognizeTestingData();
+				TestingResult res= new TestingResult(wordClasses, testingSamples);
+				//deletes data in resultsTable
+				this.deleteTableRows();
+				//display results in table
+				this.displayResults();
+				
+				this.displayAccuracy(res);
+				
 			}
 		}
 		//crop datasets
