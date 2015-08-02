@@ -1,4 +1,8 @@
 
+import org.neuroph.core.data.DataSet;
+import org.neuroph.core.data.DataSetRow;
+import org.neuroph.nnet.MultiLayerPerceptron;
+import org.neuroph.util.TransferFunctionType;
 import org.opencv.core.*;
 import org.opencv.core.Point;
 import org.opencv.imgproc.Imgproc;
@@ -37,8 +41,9 @@ public class ML {
 		this.trainingSamples= training_samples;
 		this.testingSamples= testing_samples;
 		this.initializeData();
-		this.annTrain();
-		this.predictAnn();
+//		this.annTrain();
+//		this.predictAnn();
+		this.mlptrain();
 	}
 	public ML(int testing_samples, int classes){
 			this.classes= classes;
@@ -227,6 +232,35 @@ public class ML {
 		 Core.MinMaxLocResult mmr = Core.minMaxLoc(classificationResult);
 		 return (int)mmr.maxLoc.x+1;
 	 }
+	private void matToDataset(DataSet trainingSet){
+		for(int i=0;i<trainingSamples;i++){
+			double[] data= new double[ATTRIBUTES];
+			for(int j=0;j< ATTRIBUTES;j++){
+				//get value 
+				data[j]= training_data.get(i, j)[0];
+			}
+			//get true value
+			double[] output= new double[this.classes];
+			java.util.Arrays.fill(output, 0);
+			int index= (int) (training_classes2.get(i, 0)[0] -1);
+			output[index]=1;
+			trainingSet.addRow(new DataSetRow(data, output));
+			
+		}
+	}
+	public void mlptrain(){
+		//convert to mat to DataSet
+		DataSet trainingSet = new DataSet(ATTRIBUTES, 30);
+		matToDataset(trainingSet);
+		
+		// create multi layer perceptron
+		MultiLayerPerceptron myMlPerceptron = new MultiLayerPerceptron(TransferFunctionType.SIGMOID, ATTRIBUTES,20 , 30);
+		//learn the training set
+		myMlPerceptron.learn(trainingSet);
+		// save trained neural network
+		myMlPerceptron.save("myMlPerceptron.nnet");
+		
+	}
 	
 	public void bayes(){
 		 
