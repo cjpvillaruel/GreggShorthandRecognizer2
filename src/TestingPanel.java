@@ -1,5 +1,7 @@
 import java.awt.CardLayout;
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.Image;
@@ -27,33 +29,44 @@ import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.ScrollPaneConstants;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
+import javax.swing.table.TableCellRenderer;
+import javax.swing.table.TableColumn;
 import javax.swing.table.TableColumnModel;
 import javax.swing.table.TableModel;
 
+import org.opencv.core.Mat;
+
 class TestingPanel extends JPanel implements ActionListener{
 	private static final int NUM_CLASSES=30;
+	
+	private ArrayList<Shorthand> testingSamples;
+	private ClassyButton  selectFolder1,selectFolder2,selectDest, run,crop;
+	private ClassyButton viewConfButton, viewANN, viewSVM, viewBN;
 	private MainPanel1 card;
+	private JButton backButton;
+	private JComboBox setList;
+	private JDialog d;
+	private JFileChooser srcFolder, destFolder,tFolder;
 	private JLabel title, heading, rLabel;
 	private JLabel selectLabel1,selectLabel2, selectData;
 	private JLabel heading2, heading3;
 	private JLabel sLabel, dLabel;    //source and destination label
 	private JPanel pPanel,tPanel;
-	private ClassyButton  selectFolder1,selectFolder2,selectDest, run,crop;
-	private JTextArea textArea;
 	private JPanel navBar;
-	private JButton backButton;
-	private JTextField folder1,folder2, destination;
-	private JRadioButton train,test;
-	private JComboBox setList;
-	private JFileChooser srcFolder, destFolder,tFolder;
-	private Preprocessing p;
-	private WordDB db;
-	private ArrayList<Shorthand> testingSamples;
-	private WordRecognizer r;
-	private String[] wordClasses;
 	private JPanel resultsPanel, predictedPanel, cPanel, aPanel;
+	private JRadioButton train,test;
 	private JTable resultsTable, cTable, accuracyTable;
+	private JTextArea textArea;
+	private JTextField folder1,folder2, destination;
+	private Preprocessing p;
+	private String[] wordClasses;
+	private TestingResult res;
+	private WordDB db;
+	private WordRecognizer r;
+	
 	public TestingPanel(MainPanel1 card){
 		this.setBackground(Color.white);
 		this.setLayout(null);
@@ -205,23 +218,67 @@ class TestingPanel extends JPanel implements ActionListener{
 		//create panel for confusion matrix
 		cPanel= new JPanel();
 		cPanel.setLayout(null);
-		cTable= new JTable(31,31);
+		cTable= new JTable(31,31){
+		    @Override
+		    public Component prepareRenderer(TableCellRenderer renderer, int row, int col) {
+		        Component comp = super.prepareRenderer(renderer, row, col);
+		        Object value = getModel().getValueAt(row, col);
+		       // if (getSelectedRow() == row) {
+		        	if(col==0){
+		        		comp.setBackground(Color.LIGHT_GRAY);
+		        	}
+		        	else if( row+1== col){
+		        		comp.setBackground(Color.GREEN);
+		        	}
+		        	else {
+		            comp.setBackground(Color.white);
+		        	}
+		        return comp;
+		    }
+		};
 		JScrollPane scroll2= new JScrollPane(cTable);
 		scroll2.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS);
-		//scroll2.setBounds(5, 5, 385, 380);
+		scroll2.setBounds(100, 100, 1000, 550);
 		//cPanel.add(scroll2);
-		JDialog d= new JDialog();
+		viewANN= new ClassyButton("ANN", "blue");
+		viewSVM= new ClassyButton("SVM", "blue");
+		viewBN= new ClassyButton("BN", "blue");
+		
+		viewANN.setBounds(400, 20, 100, 30);
+		viewSVM.setBounds(550, 20, 100, 30);
+		viewBN.setBounds(700, 20, 100, 30);
+		
+		viewANN.addActionListener(this);
+		viewSVM.addActionListener(this);
+		viewBN.addActionListener(this);
+		
+		d= new JDialog();
+		d.setLayout(null);
+		d.setTitle("Confusion Matrices");
+		d.setSize(new Dimension(1200, 700));
 		d.add(scroll2);
+		
+		d.add(viewANN);
+		d.add(viewSVM);
+		d.add(viewBN);
+		
 		
 		//create panel and table for accuracy results
 		aPanel = new JPanel();
+		aPanel.setLayout(null);
 		String[] columnNames = {"Word","ANN Precision","ANN Recall","SVM Precision","SVM Recall","BN Precision","BN Recall"};
 		Object[] row= {"","","" ,"", "","",""};
 	    Object[][] data = {row};
 	    TableModel model = new DefaultTableModel(data, columnNames);
 	    accuracyTable = new JTable(model);
 	    JScrollPane scroll3= new JScrollPane(accuracyTable);
+	    scroll3.setBounds(5, 5, 380, 200);
 	    aPanel.add(scroll3);
+	    
+	    viewConfButton= new ClassyButton("View Confusion Matrix", "blue");
+	    viewConfButton.setBounds(200, 230, 200, 30);
+	    viewConfButton.addActionListener(this);
+	    aPanel.add(viewConfButton);
 	    
 	    resultsPanel.add(aPanel, "Accuracy");
 		resultsPanel.add(cPanel, "Confusion");
@@ -354,6 +411,30 @@ class TestingPanel extends JPanel implements ActionListener{
 			model.addRow(row);	
 		}
 	}
+	/**
+	 * fills 'cTable' with the values in confMatrix
+	 * 
+	 * @param confMatrix  Mat - a result from TestingResult 'res'
+	 */
+	public void fillConfTable(Mat confMatrix){
+		//initialize table header
+		JTableHeader header= cTable.getTableHeader();
+		for(int i=0;i<cTable.getColumnCount()-1;i++){
+			TableColumn column1 = cTable.getTableHeader().getColumnModel().getColumn(i+1);
+			column1.setHeaderValue(wordClasses[i]);
+		}
+		System.out.println(cTable.getColumnCount());
+		//fill the first column with classes
+		
+		for(int i=0;i<wordClasses.length;i++){
+			for(int j=0;j< wordClasses.length;j++){
+				cTable.setValueAt(wordClasses[i], i, 0); 
+				cTable.setValueAt(confMatrix.get(i, j)[0],i,j+1);
+				
+			}
+		}
+		
+	}
 	@Override
 	public void actionPerformed(ActionEvent e) {
 		// TODO Auto-generated method stub
@@ -403,13 +484,14 @@ class TestingPanel extends JPanel implements ActionListener{
 				//read images
 				this.readImages(path);
 				this.recognizeTestingData();
-				TestingResult res= new TestingResult(wordClasses, testingSamples);
+				res= new TestingResult(wordClasses, testingSamples);
 				//deletes data in resultsTable
 				this.deleteTableRows();
 				//display results in table
 				this.displayResults();
-				
 				this.displayAccuracy(res);
+				Mat svmConf= res.getConfusinMatrix("svm");
+				this.fillConfTable(svmConf);
 				
 			}
 		}
@@ -419,5 +501,21 @@ class TestingPanel extends JPanel implements ActionListener{
 			 String destinationPath= destination.getText().replace("\\", "/")+"/";
 			 p.cropImages(setList.getSelectedIndex()+1,sourcePath, destinationPath);
 		 }
+		 else if(e.getSource()== viewConfButton){
+			 d.setVisible(true);
+		 }
+		
+		//show confusion matrix
+		 else if(e.getSource()== viewANN){
+			 this.fillConfTable(res.getConfusinMatrix("ann"));
+		 }
+		 else if(e.getSource()== viewSVM){
+			 this.fillConfTable(res.getConfusinMatrix("svm"));
+		 }
+		 else if(e.getSource()== viewBN){
+			 this.fillConfTable(res.getConfusinMatrix("bn"));
+		 }
 	}
+
 }
+

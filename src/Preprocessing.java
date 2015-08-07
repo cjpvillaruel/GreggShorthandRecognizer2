@@ -550,7 +550,8 @@ public class Preprocessing {
 //		Mat a= new Mat(2,2, CvType.CV_32FC1);
 //		//p.convert();
 		
-		ML ml= new ML(2400,920 , 30);
+		ML ml= new ML(145,920 , 30);
+		
 //		ml.bayes();
 		//ml.svm();
 		//p.getFeatures("images/words/ache/word (1).jpg", 1);

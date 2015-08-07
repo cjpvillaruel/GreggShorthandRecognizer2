@@ -10,12 +10,13 @@ public class TestingResult {
 	double[] precisionANN, recallANN;
 	double[] precisionSVM, recallSVM;
 	double[] precisionBN, recallBN;
+	Mat svmConf, annConf, bnConf;
 	public TestingResult(String[] words, ArrayList<Shorthand> samples){
 		this.words= words;
 		this.samples= samples;
-		this.getConfusionMatrix("ann");
-		this.getConfusionMatrix("svm");
-		this.getConfusionMatrix("bn");
+		annConf= this.getConfusionMatrix("ann");
+		svmConf= this.getConfusionMatrix("svm");
+		bnConf= this.getConfusionMatrix("bn");
 		
 	}
 	
@@ -46,10 +47,25 @@ public class TestingResult {
 			double recall= tp/wordTotal*100;
 			recallArray[i]= recall;
 		}
-		
 		return recallArray;
 	}
-	private void getConfusionMatrix(String ml){
+	private void convertToPercentage(Mat confusionMatrix){
+		for(int i=0;i<words.length;i++){
+			//get total sample per word
+			double wordTotal=0;
+			for(int j=0;j<words.length;j++){
+				wordTotal+=(int)confusionMatrix.get(i,j)[0];
+			}
+			//get percentage for each value
+			for(int j=0;j<words.length;j++){
+				double tp =confusionMatrix.get(i,j)[0]; 
+				double precision= tp/wordTotal*100;
+				confusionMatrix.put(i, j, precision);
+			}
+		}
+		
+	}
+	private Mat getConfusionMatrix(String ml){
 		Mat confusionMatrix= Mat.zeros(words.length, words.length,CvType.CV_32F);
 		
 		for(int i=0;i<samples.size();i++){
@@ -73,12 +89,14 @@ public class TestingResult {
 		double total=0;
 		
 		System.out.println(confusionMatrix.dump());
+		this.convertToPercentage(confusionMatrix);
 		//get precision and recall
 		double[] pre=this.getPrecision(confusionMatrix);
 		double[] rec=this.getRecall(confusionMatrix);
 		switch(ml){
 			case "ann": this.precisionANN = pre;
 						this.recallANN =rec;
+						
 						break;
 			case "svm": this.precisionSVM = pre;
 						this.recallSVM =rec;
@@ -88,6 +106,16 @@ public class TestingResult {
 						break;
 		}
 		
-		
+		return confusionMatrix;
+	}
+	
+	public Mat getConfusinMatrix(String ml){
+		Mat conf = null;
+		switch(ml){
+			case	"ann": conf= annConf; break;
+			case	"svm": conf= svmConf; break;
+			case	"bn": conf= bnConf; break;
+		}
+		return conf;
 	}
 }

@@ -1,7 +1,9 @@
 
+import org.neuroph.core.NeuralNetwork;
 import org.neuroph.core.data.DataSet;
 import org.neuroph.core.data.DataSetRow;
 import org.neuroph.nnet.MultiLayerPerceptron;
+import org.neuroph.nnet.learning.BackPropagation;
 import org.neuroph.util.TransferFunctionType;
 import org.opencv.core.*;
 import org.opencv.core.Point;
@@ -99,7 +101,7 @@ public class ML {
 	    
 		this.classificationResult= new Mat(1,classes,CvType.CV_32F);
 		this.testing_classes2= new Mat(this.testingSamples,1,CvType.CV_32F);
-		this.readFile("training_data.txt", training_data, training_classes, training_classes2, true);
+		this.readFile("training.txt", training_data, training_classes, training_classes2, true);
 		this.readFile("testing_data.txt", testing_data, testing_classes, testing_classes2, false);
 		//System.out.println(training_data.dump());
 	}
@@ -233,6 +235,7 @@ public class ML {
 		 return (int)mmr.maxLoc.x+1;
 	 }
 	private void matToDataset(DataSet trainingSet){
+		String a="";
 		for(int i=0;i<trainingSamples;i++){
 			double[] data= new double[ATTRIBUTES];
 			for(int j=0;j< ATTRIBUTES;j++){
@@ -245,7 +248,23 @@ public class ML {
 			int index= (int) (training_classes2.get(i, 0)[0] -1);
 			output[index]=1;
 			trainingSet.addRow(new DataSetRow(data, output));
-			
+			//System.out.println(Arrays.toString(output));
+			a+= Arrays.toString(data).replace("[", "").replace("]", ",");
+			a+= Arrays.toString(output).replace("[", "").replace("]", "\n");
+		}
+		try{
+			File file = new File("training2"+".txt");
+			// if file doesnt exists, then create it
+			if (!file.exists()) {
+				file.createNewFile();
+			}
+			FileWriter fw = new FileWriter(file.getAbsoluteFile());
+			BufferedWriter bw = new BufferedWriter(fw);
+			bw.write(a);
+			bw.close();
+			System.out.print("File updated");
+		}
+		catch(Exception e){	
 		}
 	}
 	public void mlptrain(){
@@ -253,15 +272,50 @@ public class ML {
 		DataSet trainingSet = new DataSet(ATTRIBUTES, 30);
 		matToDataset(trainingSet);
 		
+		BackPropagation a= new BackPropagation();
+		a.setLearningRate(0.3);
+		a.setMaxIterations(1000000);
 		// create multi layer perceptron
-		MultiLayerPerceptron myMlPerceptron = new MultiLayerPerceptron(TransferFunctionType.SIGMOID, ATTRIBUTES,20 , 30);
-		//learn the training set
-		myMlPerceptron.learn(trainingSet);
+		MultiLayerPerceptron myMlPerceptron = new MultiLayerPerceptron(TransferFunctionType.SIGMOID, ATTRIBUTES,21 , 30);
+		myMlPerceptron.learn(trainingSet,a);
+		
+		
 		// save trained neural network
 		myMlPerceptron.save("myMlPerceptron.nnet");
+//		
+		System.out.println("Testing trained neural network");
+		testNeuralNetwork(myMlPerceptron, trainingSet);
 		
+//		NeuralNetwork loadedMlPerceptron = NeuralNetwork.createFromFile("myMlPerceptron.nnet");
+//		
+//		// test loaded neural network
+//		System.out.println("Testing loaded neural network");
+//		testNeuralNetwork(loadedMlPerceptron, trainingSet);
 	}
+	public static void testNeuralNetwork(NeuralNetwork nnet, DataSet testSet) {
+
+		for(DataSetRow dataRow : testSet.getRows()) {
+			nnet.setInput(dataRow.getInput());
+			nnet.calculate();
+			double[ ] networkOutput = nnet.getOutput();
+			System.out.print("Input: " + Arrays.toString(dataRow.getInput()) );
 	
+			System.out.println(" Output: " + getMaxIndex(networkOutput) );
+		}
+
+	}
+	private static int getMaxIndex(double[] array){
+		int index=0;
+		double max = array[0];
+
+		for (int i = 1; i < array.length; i++) {
+		    if (array[i] > max) {
+		      max = array[i];
+		      index=i;
+		    }
+		}
+		return index;
+	}
 	public void bayes(){
 		 
 		CvNormalBayesClassifier bayes= new CvNormalBayesClassifier();
