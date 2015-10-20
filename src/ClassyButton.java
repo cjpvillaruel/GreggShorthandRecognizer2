@@ -7,13 +7,13 @@ public class ClassyButton extends JButton {
 	public ClassyButton(String label, String color){
 		super(label);
 		this.color= color;
-		setColor();
+		setColor(this.color);
 		this.setFocusPainted(false);
 		setBorderPainted(false);
 		setRolloverEnabled(true);
 	    
 	}
-	void setColor(){
+	void setColor(String color){
 		
 		this.setForeground(Color.white);
 		switch(color){

@@ -65,6 +65,7 @@ public class TestingResult {
 		}
 		
 	}
+	
 	private Mat getConfusionMatrix(String ml){
 		Mat confusionMatrix= Mat.zeros(words.length, words.length,CvType.CV_32F);
 		

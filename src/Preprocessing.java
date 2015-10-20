@@ -163,7 +163,7 @@ public class Preprocessing {
 	      Highgui.imwrite("images/samps.jpg", s);
 	       return matchLoc;
 	   }
-
+	
 	/**
 	 * 
 	 * @param num		int      - dataset number
@@ -229,7 +229,7 @@ public class Preprocessing {
 		            		boolean success = (new File(destinationPath+words[index])).mkdirs();
 		            		wordCount=1;
 		            	}
-		        		Highgui.imwrite(destinationPath+words[index]+"/word ("+wordCount+")"+".jpg", result);
+		        		Highgui.imwrite(destinationPath+words[index]+"/"+words[index]+" ("+wordCount+")"+".jpg", result);
 	        		count++;
 				}
 				index++;
@@ -453,6 +453,53 @@ public class Preprocessing {
 		Core.bitwise_and(img,marker, img);
 		return img;
 	}
+	
+	public void saveFile(String filename, String text){
+		try{
+			File file = new File(filename+".txt");
+			// if file doesnt exists, then create it
+			if (!file.exists()) {
+				file.createNewFile();
+			}
+			FileWriter fw = new FileWriter(file.getAbsoluteFile());
+			BufferedWriter bw = new BufferedWriter(fw);
+			bw.write(text);
+			bw.close();
+			System.out.print("File updated");
+		}
+		catch(Exception e){	
+		}
+	}
+	public int getAllFeatures2(String folderpath,String filename){
+		int totalSamples=0;
+		//for each word folder inside the selected folderpath,
+		//get the index then iterate on each images to get the features
+		String test="",data2="";
+		File[] files = new File(folderpath).listFiles();
+		for (File file : files) {
+			 if (file.isDirectory()) {
+				String word= file.getName();
+				 //find the index in the db
+				try {
+					int index= db.getIndex(word);
+					File[] wordFolder= file.listFiles();
+					for (File wordImage : wordFolder) {
+						//get features of an image
+						String[] str= this.getFeatures(wordImage.getAbsolutePath(), index).split("=");
+						totalSamples++;
+						test+=str[0]+"\n";
+						data2+=str[1]+"\n";
+					}
+				} catch (ClassNotFoundException | SQLException e) {
+					e.printStackTrace();
+				}//end for the trycatch
+			}//endif
+		}//endfor
+
+		 saveFile(filename, test);
+		 saveFile(filename+"_svm", data2);
+		return totalSamples;	
+	}
 	public int getAllFeatures(String folderpath,String filename){
 
 		String test="";
@@ -462,7 +509,9 @@ public class Preprocessing {
 		String words[]= new String[numClasses];
 		int classes[]= new int[numClasses];
 		int index=0;
+		System.out.println(numClasses);
         try {
+        	
 			ResultSet rs= db.select(sql);
 			while(rs.next()){
 				words[index]=rs.getString("word");
@@ -472,9 +521,11 @@ public class Preprocessing {
 		} catch (ClassNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			
 		}
         
 		
@@ -526,6 +577,9 @@ public class Preprocessing {
 		
 		return number;
 	}
+	
+
+	
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
 		// Read an image.
@@ -550,7 +604,7 @@ public class Preprocessing {
 //		Mat a= new Mat(2,2, CvType.CV_32FC1);
 //		//p.convert();
 		
-		ML ml= new ML(145,920 , 30);
+		ML ml= new ML(2400,920 , 30);
 		
 //		ml.bayes();
 		//ml.svm();

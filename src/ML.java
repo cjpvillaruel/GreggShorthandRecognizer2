@@ -43,9 +43,11 @@ public class ML {
 		this.trainingSamples= training_samples;
 		this.testingSamples= testing_samples;
 		this.initializeData();
-//		this.annTrain();
-//		this.predictAnn();
-		this.mlptrain();
+//		NormalizeData n= new NormalizeData(training_data);
+//		NormalizeData d= new NormalizeData(testing_data);
+		this.annTrain();
+		this.predictAnn();
+		//this.mlptrain();
 	}
 	public ML(int testing_samples, int classes){
 			this.classes= classes;
@@ -72,6 +74,13 @@ public class ML {
 	   	this.svmTrain();
 	   	this.bayesTrain();  	
 	}
+	/**
+	 * training 
+	 * 
+	 * @param training_samples
+	 * @param classes
+	 * @param isTraining
+	 */
 	public ML(int training_samples, int classes, boolean isTraining){
 		
 		this.trainingSamples= training_samples;
@@ -101,7 +110,7 @@ public class ML {
 	    
 		this.classificationResult= new Mat(1,classes,CvType.CV_32F);
 		this.testing_classes2= new Mat(this.testingSamples,1,CvType.CV_32F);
-		this.readFile("training.txt", training_data, training_classes, training_classes2, true);
+		this.readFile("training_data.txt", training_data, training_classes, training_classes2, true);
 		this.readFile("testing_data.txt", testing_data, testing_classes, testing_classes2, false);
 		//System.out.println(training_data.dump());
 	}
@@ -191,20 +200,20 @@ public class ML {
 		 System.out.println("Training ANN");
 		 Mat ann_layers= new Mat(3,1, CvType.CV_32S);
 		 ann_layers.put(0,0,ATTRIBUTES);
-		 ann_layers.put(1,0,21);
+		 ann_layers.put(1,0,23);
 		 ann_layers.put(2,0,this.classes);
 		 CvANN_MLP ann= new CvANN_MLP(ann_layers);
 		
-		// System.out.print(training_matrix_class.dump());
+		 //System.out.print(training_data.dump());
 		 CvANN_MLP_TrainParams params= new CvANN_MLP_TrainParams();
-		 params.set_term_crit(new TermCriteria(TermCriteria.MAX_ITER+TermCriteria.EPS,5000, 0.00001f));
+		 params.set_term_crit(new TermCriteria(TermCriteria.MAX_ITER+TermCriteria.EPS,2000, 0.001));
 		 params.set_train_method( CvANN_MLP_TrainParams.BACKPROP);
 		 params.set_bp_dw_scale(0.05);
 		 params.set_bp_moment_scale(0.05);
 		 
 		 int iterations = ann.train(training_data, training_classes,new Mat(),new Mat(),params,CvANN_MLP.NO_INPUT_SCALE);
 		 System.out.println("Iterations: "+iterations);
-		// System.out.println(this.testing_data.dump());
+		
 		 System.out.println("Saving Network..");
 		 ann.save("ann");
 		 
@@ -222,7 +231,7 @@ public class ML {
 		 for(int a=0;a< testingSamples;a++){
 			 ann.predict(testing_data.row(a), classificationResults);
 			 result[a]=getMaximum(classificationResults);
-			// System.out.println(classificationResults.dump());
+			 System.out.println(classificationResults.dump());
 			 classifications2[a]= actual.get(a, 0)[0];
 		 }
 		 
@@ -270,25 +279,28 @@ public class ML {
 	public void mlptrain(){
 		//convert to mat to DataSet
 		DataSet trainingSet = new DataSet(ATTRIBUTES, 30);
+		//System.out.println(training_data.rows());
+		NormalizeData n= new NormalizeData(training_data);
+		
 		matToDataset(trainingSet);
 		
 		BackPropagation a= new BackPropagation();
 		a.setLearningRate(0.3);
-		a.setMaxIterations(1000000);
+		a.setMaxIterations(10000);
 		// create multi layer perceptron
-		MultiLayerPerceptron myMlPerceptron = new MultiLayerPerceptron(TransferFunctionType.SIGMOID, ATTRIBUTES,21 , 30);
+		MultiLayerPerceptron myMlPerceptron = new MultiLayerPerceptron(TransferFunctionType.SIGMOID, ATTRIBUTES,15 , 30);
 		myMlPerceptron.learn(trainingSet,a);
-		
-		
-		// save trained neural network
-		myMlPerceptron.save("myMlPerceptron.nnet");
 //		
+//		
+//		// save trained neural network
+		myMlPerceptron.save("myMlPerceptron.nnet");
+		
 		System.out.println("Testing trained neural network");
 		testNeuralNetwork(myMlPerceptron, trainingSet);
-		
-//		NeuralNetwork loadedMlPerceptron = NeuralNetwork.createFromFile("myMlPerceptron.nnet");
 //		
-//		// test loaded neural network
+		//NeuralNetwork loadedMlPerceptron = NeuralNetwork.createFromFile("myMlPerceptron.nnet");
+		
+		// test loaded neural network
 //		System.out.println("Testing loaded neural network");
 //		testNeuralNetwork(loadedMlPerceptron, trainingSet);
 	}
@@ -298,7 +310,7 @@ public class ML {
 			nnet.setInput(dataRow.getInput());
 			nnet.calculate();
 			double[ ] networkOutput = nnet.getOutput();
-			System.out.print("Input: " + Arrays.toString(dataRow.getInput()) );
+			//System.out.print("Input: " + Arrays.toString(dataRow.getInput()) );
 	
 			System.out.println(" Output: " + getMaxIndex(networkOutput) );
 		}

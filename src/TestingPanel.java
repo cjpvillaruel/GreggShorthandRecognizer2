@@ -1,6 +1,7 @@
 import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
@@ -13,6 +14,7 @@ import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import javax.imageio.ImageIO;
 import javax.swing.ButtonGroup;
@@ -58,7 +60,7 @@ class TestingPanel extends JPanel implements ActionListener{
 	private JPanel navBar;
 	private JPanel resultsPanel, predictedPanel, cPanel, aPanel;
 	private JRadioButton train,test;
-	private JTable resultsTable, cTable, accuracyTable;
+	private JTable resultsTable, cTable, accuracyTable, summaryTable;
 	private JTextArea textArea;
 	private JTextField folder1,folder2, destination;
 	private Preprocessing p;
@@ -73,7 +75,7 @@ class TestingPanel extends JPanel implements ActionListener{
 		this.card= card;
 		addHeaderComponents();
 		addComponents();
-		p= new Preprocessing();
+		p= new Preprocessing(30);
 		db= new WordDB();
 		testingSamples= new ArrayList<Shorthand>();
 		r= new WordRecognizer();
@@ -236,12 +238,14 @@ class TestingPanel extends JPanel implements ActionListener{
 		        return comp;
 		    }
 		};
+		
 		JScrollPane scroll2= new JScrollPane(cTable);
+		
 		scroll2.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS);
 		scroll2.setBounds(100, 100, 1000, 550);
 		//cPanel.add(scroll2);
 		viewANN= new ClassyButton("ANN", "blue");
-		viewSVM= new ClassyButton("SVM", "blue");
+		viewSVM= new ClassyButton("SVM", "orange");
 		viewBN= new ClassyButton("BN", "blue");
 		
 		viewANN.setBounds(400, 20, 100, 30);
@@ -256,6 +260,9 @@ class TestingPanel extends JPanel implements ActionListener{
 		d.setLayout(null);
 		d.setTitle("Confusion Matrices");
 		d.setSize(new Dimension(1200, 700));
+		Container c= d.getContentPane();
+		
+		c.setBackground(Color.WHITE);
 		d.add(scroll2);
 		
 		d.add(viewANN);
@@ -281,10 +288,14 @@ class TestingPanel extends JPanel implements ActionListener{
 	    aPanel.add(viewConfButton);
 	    
 	    resultsPanel.add(aPanel, "Accuracy");
-		resultsPanel.add(cPanel, "Confusion");
+		//resultsPanel.add(cPanel, "Confusion");
 		resultsPanel.add(predictedPanel, "Predicted");
 		resultsPanel.setBounds(350, 150, 400, 400);
 		this.add(resultsPanel);
+		
+//		CardLayout cl = (CardLayout)(this.card.getLayout());
+//        cl.show(this.card, "Document");
+	
 	}
 	private void addHeaderComponents(){
 		this.title= new JLabel("Gregg Shorthand Recognizer");
@@ -319,6 +330,30 @@ class TestingPanel extends JPanel implements ActionListener{
 		navBar.setBounds(0,100,800, 40);
 		navBar.setBackground(new Color(0, 174, 239));
 		this.add(navBar);
+	}
+	
+	private void readImages2(String folderpath) throws ClassNotFoundException, SQLException{
+		//iterate on each folders inside the folder
+		 File[] files = new File(folderpath).listFiles();
+		 
+		 wordClasses= new String[files.length];
+		 int classes[]= new int[files.length];
+		 int i=0;
+		 for (File file : files) {
+			 if (file.isDirectory()) {
+				
+				//search in the database
+				wordClasses[i]= file.getName();
+				classes[i]= db.getIndex(wordClasses[i]);
+				File[] wordFolder= file.listFiles();
+				for (File wordImage : wordFolder) {
+					Shorthand word= new Shorthand(wordImage, wordClasses[i], classes[i]);	
+					testingSamples.add(word);
+				}
+				 
+				i++;
+			 }
+		}
 	}
 	
 	private void readImages(String folderpath){
@@ -472,8 +507,13 @@ class TestingPanel extends JPanel implements ActionListener{
 			String path= folder2.getText();
 			if(train.isSelected()){
 				
-	        	int trainingSamples=p.getAllFeatures(path, "training_data");
-	 	        ML train= new ML(trainingSamples, 30, true);
+				//this.readImages2(path);
+				int trainingSamples=p.getAllFeatures2(path, "training_data");
+				File folder= new File(path);
+				int classes= folder.listFiles().length;
+
+				Training train= new Training(classes, trainingSamples);
+
 			}
 			else if(test.isSelected()){
 //				Preprocessing p= new Preprocessing(30);
@@ -481,18 +521,44 @@ class TestingPanel extends JPanel implements ActionListener{
 //				System.out.println(testingSamples);
 //				ML test = new ML( testingSamples, 30);
 				
-				//read images
-				this.readImages(path);
-				this.recognizeTestingData();
-				res= new TestingResult(wordClasses, testingSamples);
-				//deletes data in resultsTable
-				this.deleteTableRows();
-				//display results in table
-				this.displayResults();
-				this.displayAccuracy(res);
-				Mat svmConf= res.getConfusinMatrix("svm");
-				this.fillConfTable(svmConf);
 				
+				try {
+					this.readImages2(path);
+					System.out.println(Arrays.toString(wordClasses));
+
+					this.recognizeTestingData();
+					res= new TestingResult(wordClasses, testingSamples);
+					
+					//deletes data in resultsTable
+					this.deleteTableRows();
+					
+					//display results in table
+					this.displayResults();
+					this.displayAccuracy(res);
+					cTable.setModel(new DefaultTableModel(wordClasses.length,wordClasses.length+1));
+					Mat svmConf= res.getConfusinMatrix("svm");
+					this.fillConfTable(svmConf);
+				
+				} catch (ClassNotFoundException | SQLException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+				
+//				//previous do not edit
+//				//read images
+//				this.readImages(path);
+//				this.recognizeTestingData();
+//				res= new TestingResult(wordClasses, testingSamples);
+//				
+//				//deletes data in resultsTable
+//				this.deleteTableRows();
+//				
+//				//display results in table
+//				this.displayResults();
+//				this.displayAccuracy(res);
+//				Mat svmConf= res.getConfusinMatrix("svm");
+//				this.fillConfTable(svmConf);
+//				
 			}
 		}
 		//crop datasets
@@ -507,12 +573,24 @@ class TestingPanel extends JPanel implements ActionListener{
 		
 		//show confusion matrix
 		 else if(e.getSource()== viewANN){
+			 //change color of button
+			 viewANN.setColor("orange");
+			 viewSVM.setColor("blue");
+			 viewBN.setColor("blue");
+			 
 			 this.fillConfTable(res.getConfusinMatrix("ann"));
 		 }
 		 else if(e.getSource()== viewSVM){
+			 
+			 viewSVM.setColor("orange");
+			 viewBN.setColor("blue");
+			 viewANN.setColor("blue");
 			 this.fillConfTable(res.getConfusinMatrix("svm"));
 		 }
 		 else if(e.getSource()== viewBN){
+			 viewBN.setColor("orange");
+			 viewANN.setColor("blue");
+			 viewSVM.setColor("blue");
 			 this.fillConfTable(res.getConfusinMatrix("bn"));
 		 }
 	}
