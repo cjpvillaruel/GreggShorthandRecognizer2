@@ -196,7 +196,7 @@ class WordRecognizerPanel extends JPanel implements ActionListener{
 		
 		for(int i=0;i<words.length;i++){
 			
-			Image image = ImageIO.read(files[index]);
+			Image image = ImageIO.read(files[i]);
 	    	ImageIcon imageIcon = new ImageIcon(image);
 			Object[] row= {imageIcon,words[i].annRes ,words[i].svmRes, words[i].bnRes};
 			DefaultTableModel model = (DefaultTableModel)table2.getModel();

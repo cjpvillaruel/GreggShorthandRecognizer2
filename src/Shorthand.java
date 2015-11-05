@@ -19,10 +19,11 @@ public class Shorthand{
 	String filename, filepath, word;
 	String type; //testing or training
 	Mat image;
-	double area, centerOfMass;
+	//double area, centerOfMass;
 	String svmRes, annRes, bnRes;
 	File file;
 	int id;
+	double width,height,x,y, area;
 	
 	public Shorthand(File file, String word, int id){
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
@@ -30,6 +31,15 @@ public class Shorthand{
 		this.word= word;
 		this.filepath = file.getAbsolutePath();
 		image= Highgui.imread(this.filepath,Highgui.IMREAD_GRAYSCALE);
+		this.id= id;
+	}
+	//attributes
+	public Shorthand(double width, double height,double x, double y, double area, int id){
+		this.width= width;
+		this.height= height;
+		this.x= x;
+		this.y=y;
+		this.area= area;
 		this.id= id;
 	}
 	public Shorthand(File file){

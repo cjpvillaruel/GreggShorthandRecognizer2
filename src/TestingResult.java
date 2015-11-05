@@ -11,13 +11,29 @@ public class TestingResult {
 	double[] precisionSVM, recallSVM;
 	double[] precisionBN, recallBN;
 	Mat svmConf, annConf, bnConf;
+	double overallPresicionANN,overallPresicionSVM, overallPresicionBN; 
+	double overallRecallANN,overallRecallSVM, overallRecallBN; 
 	public TestingResult(String[] words, ArrayList<Shorthand> samples){
 		this.words= words;
 		this.samples= samples;
 		annConf= this.getConfusionMatrix("ann");
 		svmConf= this.getConfusionMatrix("svm");
 		bnConf= this.getConfusionMatrix("bn");
+		overallPresicionANN= this.average(precisionANN);
+		overallPresicionSVM= this.average(precisionSVM);
+		overallPresicionBN= this.average(precisionBN);
+	
+		overallRecallANN= this.average(recallANN);
+		overallRecallSVM= this.average(recallSVM);
+		overallRecallBN= this.average(recallBN);
 		
+	}
+	private double average(double[] data){
+		double total=0;
+		for(int i=0;i<data.length;i++)
+			total+=data[i];
+		
+		return total/data.length;
 	}
 	
 	private double[] getPrecision(Mat confusionMatrix){
@@ -37,6 +53,7 @@ public class TestingResult {
 	}
 	private double[] getRecall(Mat confusionMatrix){
 		double[] recallArray= new double[words.length];
+		double recall;
 		for(int i=0;i<words.length;i++){
 			//get total sample per word
 			double wordTotal=0;
@@ -44,7 +61,9 @@ public class TestingResult {
 				wordTotal+=(int)confusionMatrix.get(j,i)[0];
 			}
 			int tp =(int)confusionMatrix.get(i,i)[0]; //true positive
-			double recall= tp/wordTotal*100;
+			if(wordTotal!= 0)
+				recall= tp/wordTotal*100;
+			else recall=0;
 			recallArray[i]= recall;
 		}
 		return recallArray;

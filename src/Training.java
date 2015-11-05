@@ -52,10 +52,9 @@ public class Training {
 	   	this.readFile("training_data.txt", trainingData, annTrainingClasses, bayesTrainingClasses);
 	   	
 	   	System.out.println(bayesTrainingClasses.dump());
-		//instatiate the Mats
-		//count data	
-		//train
-	   	
+		
+	   	annTrain();
+	   	predictAnn();
 	   	bayesTrain();
 	   	svmTrain();
 	}
@@ -119,4 +118,57 @@ public class Training {
 		System.out.println("Training SVM Done");
 	}
 	
+	public void annTrain(){
+		
+		 System.out.println("Training ANN");
+		 int hiddenLayers= (int)(ATTRIBUTES+this.classes)/2+1;
+		 System.out.println("hidden layers:"+hiddenLayers);
+		 Mat ann_layers= new Mat(3,1, CvType.CV_32S);
+		 ann_layers.put(0,0,ATTRIBUTES);
+		 ann_layers.put(1,0,21);
+		 ann_layers.put(2,0,this.classes);
+		 CvANN_MLP ann= new CvANN_MLP(ann_layers);
+		
+		 //System.out.print(training_data.dump());
+		 CvANN_MLP_TrainParams params= new CvANN_MLP_TrainParams();
+		 params.set_term_crit(new TermCriteria(TermCriteria.MAX_ITER+TermCriteria.EPS,2000, 0.001));
+		 
+		 params.set_train_method( CvANN_MLP_TrainParams.BACKPROP);
+		 params.set_bp_dw_scale(0.05);
+		 params.set_bp_moment_scale(0.05);
+		 
+		 //identity flag gains higher accuracy 
+		 // for 10 classes and 5 features
+		 //8 hidden layers gain high accuracy
+		 
+		 int iterations = ann.train(trainingData, annTrainingClasses,new Mat(),new Mat(),params,CvANN_MLP.IDENTITY);
+		 System.out.println("Iterations: "+iterations);
+		
+		 System.out.println("Saving Network..");
+		 ann.save("ann");
+		 System.out.println("Done.");
+		
+	}
+	
+	public void predictAnn(){
+		 CvANN_MLP ann= new CvANN_MLP();
+		 ann.load("ann");
+		 this.testingSamples= this.trainingSamples;
+		 Mat classificationResults= new Mat(1, this.classes,CvType.CV_64F);
+		 double classifications2[]= new double[this.testingSamples];
+		 double result[]= new double[this.testingSamples];
+		 for(int a=0;a< testingSamples;a++){
+			 ann.predict(trainingData.row(a), classificationResults);
+			 result[a]=getMaximum(classificationResults);
+			 System.out.println(classificationResults.dump());
+			 //classifications2[a]= actual.get(a, 0)[0];
+		 }
+		 
+		 //this.computeAccuracy(classifications2, result);
+	}
+	
+	 private int getMaximum(Mat classificationResult){
+		 Core.MinMaxLocResult mmr = Core.minMaxLoc(classificationResult);
+		 return (int)mmr.maxLoc.x+1;
+	 }
 }

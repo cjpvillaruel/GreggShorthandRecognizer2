@@ -279,11 +279,21 @@ class TestingPanel extends JPanel implements ActionListener{
 	    TableModel model = new DefaultTableModel(data, columnNames);
 	    accuracyTable = new JTable(model);
 	    JScrollPane scroll3= new JScrollPane(accuracyTable);
-	    scroll3.setBounds(5, 5, 380, 200);
+	    scroll3.setBounds(5, 180, 380, 200);
 	    aPanel.add(scroll3);
 	    
+	    String[] columnNames2 = {" ","ANN","SVM","BN"};
+	    Object[][] data2 = {{"PRECISION","","" ,""},{"RECALL","","" ,""} };
+	    model = new DefaultTableModel(data2, columnNames2);
+	    TableModel model2 = new DefaultTableModel(data2, columnNames2);
+	    summaryTable = new JTable(model2);
+	    JScrollPane scroll4= new JScrollPane(summaryTable);
+	    scroll4.setBounds(10, 30, 380, 55);
+	    aPanel.add(scroll4);
+	    
+	    
 	    viewConfButton= new ClassyButton("View Confusion Matrix", "blue");
-	    viewConfButton.setBounds(200, 230, 200, 30);
+	    viewConfButton.setBounds(200, 100, 200, 30);
 	    viewConfButton.addActionListener(this);
 	    aPanel.add(viewConfButton);
 	    
@@ -439,12 +449,22 @@ class TestingPanel extends JPanel implements ActionListener{
 		
 	}
 	
+	
 	public void displayAccuracy(TestingResult res){
 		for(int i=0;i<wordClasses.length;i++){
 			Object[] row= {wordClasses[i],res.precisionANN[i],res.recallANN[i] ,res.precisionSVM[i],res.recallSVM[i] ,res.precisionBN[i],res.recallBN[i] };
 			DefaultTableModel model = (DefaultTableModel)accuracyTable.getModel();
 			model.addRow(row);	
 		}
+		summaryTable.setValueAt(res.overallPresicionANN, 0, 1);
+		summaryTable.setValueAt(res.overallPresicionSVM, 0, 2);
+		summaryTable.setValueAt(res.overallPresicionBN, 0, 3);
+		
+		summaryTable.setValueAt(res.overallRecallANN, 1, 1);
+		summaryTable.setValueAt(res.overallRecallSVM, 1, 2);
+		summaryTable.setValueAt(res.overallRecallBN, 1, 3);
+		//System.out.println("results: \nANN:"+res.overallPresicionANN+"\nSVM"+res.overallPresicionSVM+"\nBN"+res.overallPresicionBN);
+		
 	}
 	/**
 	 * fills 'cTable' with the values in confMatrix
