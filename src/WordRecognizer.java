@@ -34,6 +34,7 @@ public class WordRecognizer {
 	}
 	public Mat getFeature(Mat image){
 		Mat featuresMat= new Mat(1,5, CvType.CV_32F);
+		//get feature:
 		/**
 		 * width and height of the contour (largest contour)
 		 *  center of mass
@@ -42,6 +43,7 @@ public class WordRecognizer {
 		**/
 		int width=0, height=0;
 		double m00=0,m01=0, m10=0;
+
 		String features= "";
 		//Highgui.imwrite("images/res/resize.png", image);
 		 // finding the contours
@@ -59,34 +61,91 @@ public class WordRecognizer {
         double area1=Double.MAX_VALUE;
         int i=0;
         MatOfPoint2f  approxCurve = new MatOfPoint2f();
-        for (MatOfPoint contour : contours) { 	
+        
+      //  System.out.println(contours.size());
+        if(contours.size()> 1){
+        	//get the points of each contours
+        	double x[]= new double[contours.size()];
+        	double y[]= new double[contours.size()];
         	
-            MatOfPoint2f contour2f = new MatOfPoint2f( contour.toArray() );
-            //Processing on mMOP2f1 which is in type MatOfPoint2f
-            double approxDistance = Imgproc.arcLength(contour2f, true)*0.02;
-            Imgproc.approxPolyDP(contour2f, approxCurve, approxDistance, true);
-            
-            area1 = Imgproc.contourArea(contour);
-            //Convert back to MatOfPoint
-            MatOfPoint points = new MatOfPoint( approxCurve.toArray() );
-            // Get bounding rect of contour
-            Rect rect = Imgproc.boundingRect(points);
-            //crop
-        	Mat result = image2.submat(rect);
-        	if(rect.width> width || rect.height > height){
-        		width= rect.width;
-            	height= rect.height;
+        	int maxX=0,maxY=0; //maxX and maxY
+        	int minX=Integer.MAX_VALUE,minY=Integer.MAX_VALUE;//minX and minY 
+        	
+        	
+        	for (MatOfPoint contour : contours) { 		
+                MatOfPoint2f contour2f = new MatOfPoint2f( contour.toArray() );
+                //Processing on mMOP2f1 which is in type MatOfPoint2f
+                double approxDistance = Imgproc.arcLength(contour2f, true)*0.02;
+                Imgproc.approxPolyDP(contour2f, approxCurve, approxDistance, true);
+                //Convert back to MatOfPoint
+                MatOfPoint points = new MatOfPoint( approxCurve.toArray() );
+                // Get bounding rect of contour
+                Rect rect = Imgproc.boundingRect(points);
+              //  System.out.println("rect"+rect.x);
+                if(rect.x+ rect.width > maxX){
+                	maxX= rect.x + rect.width;
+                }
+                if(rect.x < minX){
+                	minX= rect.x;
+                }
+                if(rect.y+rect.height > maxY){
+                	maxY= rect.y+rect.height;
+                }
+                if(rect.y < minY){
+                	minY= rect.y;
+                }
+               // System.out.println("y:" + rect.y);
         	}
+        	Mat result = image2.submat(minY, maxY, minX, maxX);
+//        	System.out.println(minY+"minY "+minX+"minX");
+//        	System.out.println(maxY+"maxY "+maxX+"maxX");
+
+        	width= result.cols();
+        	height= result.rows();
         	Moments m= Imgproc.moments(result, true);
         	m00= m.get_m00();
         	m01 = m.get_m01();
         	m10= m.get_m10();
-        	//System.out.println("moments 01="+m.get_m00() +" height:"+rect.height+" width: "+rect.width);
-        	//Highgui.imwrite("images/res/result"+i+".png", result);
-        	//create box
-        	//Core.rectangle(image2,new Point(rect.x-5,rect.y-5),new Point(rect.x+rect.width+5,rect.y+rect.height+5), new Scalar(0, 255, 255),3);
-        	i++;
-          	
+        	area1 = m00;
+        }
+        else{
+	        for (MatOfPoint contour : contours) { 	  	
+	            MatOfPoint2f contour2f = new MatOfPoint2f( contour.toArray() );
+	            //Processing on mMOP2f1 which is in type MatOfPoint2f
+	            double approxDistance = Imgproc.arcLength(contour2f, true)*0.02;
+	            Imgproc.approxPolyDP(contour2f, approxCurve, approxDistance, true);
+	            
+	            area1 = Imgproc.contourArea(contour);
+	            //Convert back to MatOfPoint
+	            MatOfPoint points = new MatOfPoint( approxCurve.toArray() );
+	            // Get bounding rect of contour
+	            Rect rect = Imgproc.boundingRect(points);
+	            //crop
+	        	Mat result = image2.submat(rect);
+	        	if(rect.width> width || rect.height > height){
+	        		
+	        		width= rect.width;
+	            	height= rect.height;
+	        	}
+	        	/**
+	        	 * 
+	        	 * detect if there are loops, 
+	        	 * if there are loops, check the pixels around the loop if there are other strokes
+	        	 * 
+	        	*/
+	        	Moments m= Imgproc.moments(result, true);
+	        	m00= m.get_m00();
+	        	m01 = m.get_m01();
+	        	m10= m.get_m10();
+	        	
+	        	//Highgui.imwrite("images/croppedfeature/"+newfilename, result);
+	        	//System.out.println("moments 01="+m.get_m00() +" height:"+rect.height+" width: "+rect.width);
+	        	//Highgui.imwrite("images/res/result"+i+".png", result);
+	        	//create box
+	        	//Core.rectangle(image2,new Point(rect.x-5,rect.y-5),new Point(rect.x+rect.width+5,rect.y+rect.height+5), new Scalar(0, 255, 255),3);
+	        	i++;
+	          	
+	        }
         }
         float x= m00!=0? (float)(m01/m00):0;
         float y= m00!=0? (float)(m10/m00):0;

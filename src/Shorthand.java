@@ -42,6 +42,9 @@ public class Shorthand{
 		this.area= area;
 		this.id= id;
 	}
+	public Shorthand(Mat image){
+		this.image = image;
+	}
 	public Shorthand(File file){
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 		this.file = file;
