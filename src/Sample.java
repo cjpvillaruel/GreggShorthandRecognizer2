@@ -60,8 +60,65 @@ public class Sample
        // Save the visualized detection.
        Highgui.imwrite("images/samp.jpg", img);
    }
-   public static void main( String[] args )
-   {
+	public static Mat getCCH(Mat image){
+		ArrayList<MatOfPoint> contours = new ArrayList<MatOfPoint>();
+		Mat hierarchy = new Mat();
+		Imgproc.findContours(image, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_NONE);
+		
+		Mat chainHistogram =Mat.zeros(1, 8, CvType.CV_32F);
+		int n=0;
+		MatOfPoint2f  approxCurve = new MatOfPoint2f();
+		for(MatOfPoint contour:contours){
+		
+            
+			//get the freeman chain code from the contours
+			int rows= contour.rows();
+			//System.out.println("\nrows"+rows+"\n"+contour.dump());
+		    int direction = 7;
+		    Mat prevPoint = contours.get(0).row(0);
+		    n+=rows-1;
+		    for(int i=1;i<rows;i++){
+		    	//get the current point
+		    	double x1 =  contour.get(i-1,0)[1];
+		    	double y1 =  contour.get(i-1, 0)[0];
+		    	  
+		    	//get the second point
+		    	double x2 =  contour.get(i,0)[1];
+		    	double y2 =  contour.get(i,0)[0];
+		    	      	  
+		    	if(x2==x1 && y2 == y1+1)
+		    		  direction =0;
+		    	else if(x2 == x1-1 && y2 == y1+1)
+		    		  direction =1;
+		    	else if(x2 == x1-1 && y2 == y1)
+			    	  direction =2;
+		    	else if(x2 == x1-1 && y2 == y1-1)
+			    	  direction =3;
+		    	else if(x2 == x1 && y2 == y1-1 )
+			    	  direction =4;
+		    	else if(x2 == x1+1 && y2 == y1-1)
+			    	  direction =5;
+		    	else if(x2 == x1+1 && y2 == y1)
+			    	  direction =6;
+		    	else if(x2== x1+1 && y2== y1+1)
+			    	  direction =7;
+		    	else
+		    		  System.out.print("err");
+		    	double counter = chainHistogram.get(0, direction)[0];
+		    	chainHistogram.put(0, direction, ++counter);
+		    	System.out.print(direction);
+		    	
+		      }
+		    
+		}
+		 System.out.println("\n"+chainHistogram.dump());
+		Scalar alpha = new Scalar(n); // the factor
+	    Core.divide(chainHistogram,alpha,chainHistogram);
+	    System.out.println("\nrows="+n+" "+chainHistogram.dump());
+		return chainHistogram;
+	}
+	
+   public static void main( String[] args ){
       System.loadLibrary( Core.NATIVE_LIBRARY_NAME );
       
 //      Mat mat = Mat.eye( 3, 3, CvType.CV_8UC1 );
@@ -78,58 +135,63 @@ public class Sample
 //      Highgui.imwrite("images/erosion2.jpg", data);
       
       //getting dct of an image
-      String path = "images/croppedfeature/in (2).jpg";
+      String path = "images/croppedfeature/hear (1).jpg";
       
       Mat image= Highgui.imread(path,Highgui.IMREAD_GRAYSCALE);
       ArrayList<MatOfPoint> contours = new ArrayList<MatOfPoint>();
       Imgproc.threshold(image, image, 0, 255, Imgproc.THRESH_OTSU);
-      Mat hierarchy = new Mat();
       Imgproc.threshold(image, image, 220, 128, Imgproc.THRESH_BINARY_INV);
-      Imgproc.findContours(image, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_NONE);
-     // System.out.println(contours.get(0).dump());
+      //Imgproc.findContours(image, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_NONE);
+      Mat cch= getCCH(image);
+      
+      // System.out.println(contours.get(0).dump());
       
       //get the freeman chain code from the contours
-      int rows= contours.get(0).rows();
-      Mat chainHistogram =Mat.zeros(1, 8, CvType.CV_32S);
-      int direction = 7;
-      Mat prevPoint = contours.get(0).row(0);
-      System.out.println(prevPoint.dump());
-      Mat contour = contours.get(0);
-      for(int i=1;i<rows;i++){
-    	 
-    	//  System.out.print(contour.row(i).dump());
-    	
-    	  //get the current point
-    	  double x1 =  contour.get(i-1,0)[1];
-    	  double y1 =  contour.get(i-1, 0)[0];
-    	  
-    	  //get the second point
-    	  double x2 =  contour.get(i,0)[1];
-    	  double y2 =  contour.get(i,0)[0];
-    	  
-    	  
-    	  if(x2==x1 && y2 == y1+1)
-    		  direction =0;
-    	  else if(x2 == x1-1 && y2 == y1+1)
-    		  direction =1;
-    	  else if(x2 == x1-1 && y2 == y1)
-	    	  direction =2;
-    	  else if(x2 == x1-1 && y2 == y1-1)
-	    	  direction =3;
-    	  else if(x2 == x1 && y2 == y1-1 )
-	    	  direction =4;
-    	  else if(x2 == x1+1 && y2 == y1-1)
-	    	  direction =5;
-    	  else if(x2 == x1+1 && y2 == y1)
-	    	  direction =6;
-    	  else if(x2== x1+1 && y2== y1+1)
-	    	  direction =7;
-    	  else
-    		  System.out.print("err");
-    	  double counter = chainHistogram.get(0, direction)[0];
-    	  chainHistogram.put(0, direction, ++counter);
-    	  System.out.print(direction);
-      }
-      System.out.println("\n"+chainHistogram.dump());
+//      int rows= contours.get(0).rows();
+//      Mat chainHistogram =Mat.zeros(1, 8, CvType.CV_32F);
+//      int direction = 7;
+//      Mat prevPoint = contours.get(0).row(0);
+//      Mat contour = contours.get(0);
+// 
+//      for(int i=1;i<rows;i++){
+//    	
+//    	  //get the current point
+//    	  double x1 =  contour.get(i-1,0)[1];
+//    	  double y1 =  contour.get(i-1, 0)[0];
+//    	  
+//    	  //get the second point
+//    	  double x2 =  contour.get(i,0)[1];
+//    	  double y2 =  contour.get(i,0)[0];
+//    	  
+//    	  
+//    	  if(x2==x1 && y2 == y1+1)
+//    		  direction =0;
+//    	  else if(x2 == x1-1 && y2 == y1+1)
+//    		  direction =1;
+//    	  else if(x2 == x1-1 && y2 == y1)
+//	    	  direction =2;
+//    	  else if(x2 == x1-1 && y2 == y1-1)
+//	    	  direction =3;
+//    	  else if(x2 == x1 && y2 == y1-1 )
+//	    	  direction =4;
+//    	  else if(x2 == x1+1 && y2 == y1-1)
+//	    	  direction =5;
+//    	  else if(x2 == x1+1 && y2 == y1)
+//	    	  direction =6;
+//    	  else if(x2== x1+1 && y2== y1+1)
+//	    	  direction =7;
+//    	  else
+//    		  System.out.print("err");
+//    	  double counter = chainHistogram.get(0, direction)[0];
+//    	  chainHistogram.put(0, direction, ++counter);
+//    	  System.out.print(direction);
+//    	
+//      }
+//  
+//      Scalar alpha = new Scalar(rows-1); // the factor
+//      Core.divide(chainHistogram,alpha,chainHistogram);
+//      
+//      System.out.println("\n"+chainHistogram.dump());
+     
    }
 }

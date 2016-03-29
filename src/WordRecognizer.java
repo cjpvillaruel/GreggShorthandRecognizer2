@@ -8,11 +8,13 @@ import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Rect;
+import org.opencv.core.Scalar;
 import org.opencv.highgui.Highgui;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.imgproc.Moments;
 
 public class WordRecognizer {
+	private static final int ATTRIBUTES = 13;
 	Shorthand unknown;
 	Mat image;
 	ML ml;
@@ -32,8 +34,60 @@ public class WordRecognizer {
 		word.bnRes= db.getWord((int)results[2]);
 		
 	}
+	public Mat getCCH(Mat image){
+		ArrayList<MatOfPoint> contours = new ArrayList<MatOfPoint>();
+		Mat hierarchy = new Mat();
+		Imgproc.findContours(image, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_NONE);	
+		Mat chainHistogram =Mat.zeros(1, 8, CvType.CV_32F);
+		int n=0;
+		MatOfPoint2f  approxCurve = new MatOfPoint2f();
+		for(MatOfPoint contour:contours){  
+			//get the freeman chain code from the contours
+			int rows= contour.rows();
+			//System.out.println("\nrows"+rows+"\n"+contour.dump());
+		    int direction = 7;
+		    Mat prevPoint = contours.get(0).row(0);
+		    n+=rows-1;
+		    for(int i=1;i<rows;i++){
+		    	//get the current point
+		    	double x1 =  contour.get(i-1,0)[1];
+		    	double y1 =  contour.get(i-1, 0)[0];
+		    	  
+		    	//get the second point
+		    	double x2 =  contour.get(i,0)[1];
+		    	double y2 =  contour.get(i,0)[0];
+		    	      	  
+		    	if(x2==x1 && y2 == y1+1)
+		    		  direction =0;
+		    	else if(x2 == x1-1 && y2 == y1+1)
+		    		  direction =1;
+		    	else if(x2 == x1-1 && y2 == y1)
+			    	  direction =2;
+		    	else if(x2 == x1-1 && y2 == y1-1)
+			    	  direction =3;
+		    	else if(x2 == x1 && y2 == y1-1 )
+			    	  direction =4;
+		    	else if(x2 == x1+1 && y2 == y1-1)
+			    	  direction =5;
+		    	else if(x2 == x1+1 && y2 == y1)
+			    	  direction =6;
+		    	else if(x2== x1+1 && y2== y1+1)
+			    	  direction =7;
+		    	else
+		    		  System.out.print("err");
+		    	double counter = chainHistogram.get(0, direction)[0];
+		    	chainHistogram.put(0, direction, ++counter);
+		    	
+		      }
+		}
+		 //System.out.println("\n"+chainHistogram.dump());
+		Scalar alpha = new Scalar(n); // the factor
+	    Core.divide(chainHistogram,alpha,chainHistogram);
+	    //System.out.println("\nrows="+n+" "+chainHistogram.dump());
+		return chainHistogram;
+	}
 	public Mat getFeature(Mat image){
-		Mat featuresMat= new Mat(1,5, CvType.CV_32F);
+		Mat featuresMat= new Mat(1,ATTRIBUTES, CvType.CV_32F);
 		//get feature:
 		/**
 		 * width and height of the contour (largest contour)
@@ -53,6 +107,7 @@ public class WordRecognizer {
         Mat image2= image.clone();
         
         Imgproc.threshold(image, image, 220, 128, Imgproc.THRESH_BINARY_INV);
+        Mat chaincode= getCCH(image);
         Imgproc.findContours(image, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
         
        // finding best bounding rectangle for a contour whose distance is closer to the image center that other ones
@@ -81,7 +136,7 @@ public class WordRecognizer {
                 MatOfPoint points = new MatOfPoint( approxCurve.toArray() );
                 // Get bounding rect of contour
                 Rect rect = Imgproc.boundingRect(points);
-              //  System.out.println("rect"+rect.x);
+               
                 if(rect.x+ rect.width > maxX){
                 	maxX= rect.x + rect.width;
                 }
@@ -114,7 +169,7 @@ public class WordRecognizer {
 	            //Processing on mMOP2f1 which is in type MatOfPoint2f
 	            double approxDistance = Imgproc.arcLength(contour2f, true)*0.02;
 	            Imgproc.approxPolyDP(contour2f, approxCurve, approxDistance, true);
-	            
+	           
 	            area1 = Imgproc.contourArea(contour);
 	            //Convert back to MatOfPoint
 	            MatOfPoint points = new MatOfPoint( approxCurve.toArray() );
@@ -137,6 +192,7 @@ public class WordRecognizer {
 	        	m00= m.get_m00();
 	        	m01 = m.get_m01();
 	        	m10= m.get_m10();
+	        	//area1 = m00;
 	        	
 	        	//Highgui.imwrite("images/croppedfeature/"+newfilename, result);
 	        	//System.out.println("moments 01="+m.get_m00() +" height:"+rect.height+" width: "+rect.width);
@@ -156,7 +212,12 @@ public class WordRecognizer {
         featuresMat.put(0,2,x );
         featuresMat.put(0,3,y );
         featuresMat.put(0,4,area1 );
-
+//        featuresMat.put(0,5,perimeter );
+        for(i=0;i<8;i++){
+        	double hist=chaincode.get(0, i)[0];
+        	hist= Math.round(hist * 100.0) / 100.0;
+        	featuresMat.put(0,5+i,hist );
+        }
         return featuresMat;
 	}
 	

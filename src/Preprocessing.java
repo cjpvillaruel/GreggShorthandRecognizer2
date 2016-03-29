@@ -236,23 +236,74 @@ public class Preprocessing {
 			}
 		}
 	}
+	public Mat getCCH(Mat image){
+		ArrayList<MatOfPoint> contours = new ArrayList<MatOfPoint>();
+		Mat hierarchy = new Mat();
+		Imgproc.findContours(image, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_NONE);	
+		Mat chainHistogram =Mat.zeros(1, 8, CvType.CV_32F);
+		int n=0;
+		MatOfPoint2f  approxCurve = new MatOfPoint2f();
+		for(MatOfPoint contour:contours){  
+			//get the freeman chain code from the contours
+			int rows= contour.rows();
+			//System.out.println("\nrows"+rows+"\n"+contour.dump());
+		    int direction = 7;
+		    Mat prevPoint = contours.get(0).row(0);
+		    n+=rows-1;
+		    for(int i=1;i<rows;i++){
+		    	//get the current point
+		    	double x1 =  contour.get(i-1,0)[1];
+		    	double y1 =  contour.get(i-1, 0)[0];
+		    	  
+		    	//get the second point
+		    	double x2 =  contour.get(i,0)[1];
+		    	double y2 =  contour.get(i,0)[0];
+		    	      	  
+		    	if(x2==x1 && y2 == y1+1)
+		    		  direction =0;
+		    	else if(x2 == x1-1 && y2 == y1+1)
+		    		  direction =1;
+		    	else if(x2 == x1-1 && y2 == y1)
+			    	  direction =2;
+		    	else if(x2 == x1-1 && y2 == y1-1)
+			    	  direction =3;
+		    	else if(x2 == x1 && y2 == y1-1 )
+			    	  direction =4;
+		    	else if(x2 == x1+1 && y2 == y1-1)
+			    	  direction =5;
+		    	else if(x2 == x1+1 && y2 == y1)
+			    	  direction =6;
+		    	else if(x2== x1+1 && y2== y1+1)
+			    	  direction =7;
+		    	else
+		    		  System.out.print("err");
+		    	double counter = chainHistogram.get(0, direction)[0];
+		    	chainHistogram.put(0, direction, ++counter);
+		    	
+		      }
+		}
+		 //System.out.println("\n"+chainHistogram.dump());
+		Scalar alpha = new Scalar(n); // the factor
+	    Core.divide(chainHistogram,alpha,chainHistogram);
+	    //System.out.println("\nrows="+n+" "+chainHistogram.dump());
+		return chainHistogram;
+	}
 	
+	/**
+	 * width and height of the contour (largest contour)
+	 * center of mass
+	 * moments
+	 * chaincode histogram
+	**/
 	public String getFeatures(String path, int index){
-		//get feature:
-		/**
-		 * width and height of the contour (largest contour)
-		 *  center of mass
-		 *  moments
-		 *  
-		**/
+		
 		int width=0, height=0;
 		double m00=0,m01=0, m10=0;
-		
 		Mat image= Highgui.imread(path,Highgui.IMREAD_GRAYSCALE);
-		
+		Mat chaincode;
 		String newStr= path.replace("\\", "#");
 		String[] array1= newStr.split("#");
-		System.out.println();
+		//System.out.println();
 		String newfilename= array1[array1.length-1];
 		String features= "";
 		//Highgui.imwrite("images/res/resize.png", image);
@@ -263,6 +314,8 @@ public class Preprocessing {
         Mat image2= image.clone();
         
         Imgproc.threshold(image, image, 220, 128, Imgproc.THRESH_BINARY_INV);
+        //get chaincodehistogram 
+        chaincode= getCCH(image);
         Imgproc.findContours(image, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
         
        // finding best bounding rectangle for a contour whose distance is closer to the image center that other ones
@@ -272,7 +325,6 @@ public class Preprocessing {
         int i=0;
         MatOfPoint2f  approxCurve = new MatOfPoint2f();
         
-        System.out.println(contours.size());
         if(contours.size()> 1){
         	//get the points of each contours
         	double x[]= new double[contours.size()];
@@ -283,15 +335,17 @@ public class Preprocessing {
         	
         	
         	for (MatOfPoint contour : contours) { 		
+        		
                 MatOfPoint2f contour2f = new MatOfPoint2f( contour.toArray() );
                 //Processing on mMOP2f1 which is in type MatOfPoint2f
                 double approxDistance = Imgproc.arcLength(contour2f, true)*0.02;
                 Imgproc.approxPolyDP(contour2f, approxCurve, approxDistance, true);
                 //Convert back to MatOfPoint
                 MatOfPoint points = new MatOfPoint( approxCurve.toArray() );
+                
                 // Get bounding rect of contour
                 Rect rect = Imgproc.boundingRect(points);
-                System.out.println("rect"+rect.x);
+                //System.out.println("rect"+rect.x);
                 if(rect.x+ rect.width > maxX){
                 	maxX= rect.x + rect.width;
                 }
@@ -304,7 +358,7 @@ public class Preprocessing {
                 if(rect.y < minY){
                 	minY= rect.y;
                 }
-                System.out.println("y:" + rect.y);
+               
         	}
         	Mat result = image2.submat(minY, maxY, minX, maxX);
 //        	System.out.println(minY+"minY "+minX+"minX");
@@ -357,11 +411,23 @@ public class Preprocessing {
 	          	
 	        }
         }
+       
         float x= m00!=0? (float)(m01/m00):0;
         float y= m00!=0? (float)(m10/m00):0;
-        features=width+","+height+","+x+","+y+","+area1+","+index;
-        features+="="+index+" 1:"+width+" 2:"+height+" 3:"+x+" 4:"+y+" 5:"+area1;
-        //System.out.println(features);
+        features=width+","+height+","+x+","+y+","+area1;
+     
+        String svmFeatures = "="+index+" 1:"+width+" 2:"+height+" 3:"+x+" 4:"+y+" 5:"+area1;
+        //add chain code histogram to string
+        for(i=0;i<8;i++){
+        	double hist=chaincode.get(0, i)[0];
+        	hist= Math.round(hist * 100.0) / 100.0;
+        	features+=","+hist;
+        	svmFeatures+=" "+(6+i)+":"+hist;
+        }
+        features+=","+index;
+        features+=svmFeatures;
+        
+       
         return features;
 	}
 	
@@ -683,9 +749,12 @@ public class Preprocessing {
 //		Mat structElement = Imgproc.getStructuringElement(Imgproc.MORPH_CROSS, new Size(3,3));
 //		Imgproc.erode(word, word, structElement);
 //		Highgui.imwrite("images/thinned/dilate.jpg",word);
-		String path= "images\\nfeatures";
+		String path= "images\\training_words";
+		String path2= "images\\testing_words";
 		int trainingSamples=p.getAllFeatures2(path, "training_data");
-		
+		//int testingSamples= p.getAllFeatures2(path2, "testing_data");
+//		int trainingSamples=2400;
+//		int testingSamples=840;
 //		String path= "images\\nfeatures\\hear\\hear (50).jpg";
 //		String a= p.getFeatures(path, 1);
 //		System.out.println(a);

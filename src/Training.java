@@ -21,7 +21,7 @@ import java.awt.image.BufferedImage;
 
 import javax.imageio.ImageIO;
 public class Training {
-	private static final int ATTRIBUTES = 5;
+	private static final int ATTRIBUTES = 13;
 //	private static final int TRAINING_SAMPLES = 1103; 
 //	private static final int TESTING_SAMPLES = 320; 
 //	private static final int CLASSES = 10; 
@@ -54,7 +54,7 @@ public class Training {
 	   	System.out.println(bayesTrainingClasses.dump());
 		
 	   	annTrain();
-	   	predictAnn();
+	   //	predictAnn();
 	   	bayesTrain();
 	   	svmTrain();
 	}
@@ -125,7 +125,7 @@ public class Training {
 		 System.out.println("hidden layers:"+hiddenLayers);
 		 Mat ann_layers= new Mat(3,1, CvType.CV_32S);
 		 ann_layers.put(0,0,ATTRIBUTES);
-		 ann_layers.put(1,0,21);
+		 ann_layers.put(1,0,hiddenLayers);
 		 ann_layers.put(2,0,this.classes);
 		 CvANN_MLP ann= new CvANN_MLP(ann_layers);
 		

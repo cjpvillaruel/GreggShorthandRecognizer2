@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -40,11 +41,13 @@ class DocumentReaderPanel extends JPanel implements ActionListener{
 	private JTextArea textArea;
 	private JPanel navBar;
 	private JButton backButton;
+	private JComboBox mlSelect;
 	private FileDialog fd;
 	private File[] files;
 	private JLabel imageLabel;
 	private WordRecognizer recognizer;
 	private static final int MARGIN= 3;
+	private String transcribed="";
 	
 	public DocumentReaderPanel(MainPanel1 card){
 		this.setBackground(Color.WHITE);
@@ -69,20 +72,30 @@ class DocumentReaderPanel extends JPanel implements ActionListener{
 		imageLabel= new JLabel();
 		imagePanel.add(imageLabel);
 
+		String[] list= {"ANN","Naive Bayes","SVM"};
+		mlSelect= new JComboBox(list);
+		mlSelect.setBounds(400, 250,100,30);
+		this.add(mlSelect);
+		
 		rButton= new ClassyButton("Translate","blue");
 		rButton.setBounds(400, 300, 100, 30);
 		this.add(rButton);
 		rButton.addActionListener(this);
 		
 		textArea= new JTextArea();
+		textArea.setWrapStyleWord(true);
+		textArea.setLineWrap(true);
 		textArea.setEditable(false);
-		JScrollPane scroll = new JScrollPane (textArea);
+		JScrollPane scroll = new JScrollPane (textArea,JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 		scroll.setBounds(530, 250, 230, 130);
 		this.add(scroll);
 		
 		rLabel= new JLabel("Result:");
 		rLabel.setBounds(530, 200, 200, 30);
 		this.add(rLabel);
+		
+		
+	
 		
 		fd = new FileDialog(new JFrame(), "Choose a file", FileDialog.LOAD);
 		fd.setDirectory(".");
@@ -309,12 +322,26 @@ class DocumentReaderPanel extends JPanel implements ActionListener{
 			
 			//put the label into the image
 			// Core.putText(image, word.bnRes, new Point(rect1.x,rect1.y), Core.FONT_HERSHEY_SIMPLEX, 0.4, new Scalar(0,0,0),1); 
-			   
+			String selectedML= (String) mlSelect.getItemAt(mlSelect.getSelectedIndex());
+			//System.out.println(selectedML);
+			if(selectedML == "ANN"){
+				Core.putText(image, word.annRes, new Point(rect1.x,rect1.y), Core.FONT_HERSHEY_SIMPLEX, 0.4, new Scalar(0,0,0),1); 
+				this.transcribed+= word.annRes+" ";
+			}
+			if(selectedML == "SVM"){
+				Core.putText(image, word.svmRes, new Point(rect1.x,rect1.y), Core.FONT_HERSHEY_SIMPLEX, 0.4, new Scalar(0,0,0),1); 
+				this.transcribed+= word.svmRes+" ";
+			}
+			if(selectedML == "Naive Bayes"){
+				Core.putText(image, word.bnRes, new Point(rect1.x,rect1.y), Core.FONT_HERSHEY_SIMPLEX, 0.4, new Scalar(0,0,0),1); 
+				this.transcribed+= word.bnRes+" ";
+			}
 		}
 	}
 	
 	
 	private void readDocument(String path){
+		transcribed="";
 		//read file
 		Mat image= Highgui.imread(path,Highgui.IMREAD_GRAYSCALE);
 		Mat data1= Highgui.imread(path);
@@ -370,6 +397,7 @@ class DocumentReaderPanel extends JPanel implements ActionListener{
     	
     	
 		//recognize each word segmented 
+		this.textArea.setText(this.transcribed);
 	}
 	@Override
 	public void actionPerformed(ActionEvent e) {

@@ -21,7 +21,7 @@ import java.awt.image.BufferedImage;
 
 import javax.imageio.ImageIO;
 public class ML {
-	private static final int ATTRIBUTES = 5;
+	private static final int ATTRIBUTES = 13;
 //	private static final int TRAINING_SAMPLES = 1103; 
 //	private static final int TESTING_SAMPLES = 320; 
 //	private static final int CLASSES = 10; 
@@ -45,9 +45,10 @@ public class ML {
 		this.initializeData();
 //		NormalizeData n= new NormalizeData(training_data);
 //		NormalizeData d= new NormalizeData(testing_data);
-		this.annTrain();
-		this.predictAnn();
+//		this.annTrain();
+//		this.predictAnn();
 		//this.mlptrain();
+		//bayes();
 	}
 	public ML(int testing_samples, int classes){
 			this.classes= classes;
@@ -91,8 +92,8 @@ public class ML {
 	   	this.training_classes= Mat.zeros(this.trainingSamples,this.classes,CvType.CV_32F);
 	   	this.readFile("training_data.txt", training_data, training_classes, training_classes2, true);
 	   	
-	   	this.annTrain();
-	   	this.svmTrain();
+//	   	this.annTrain();
+//	   	this.svmTrain();
 	   	this.bayesTrain();  	
 	}
 
@@ -112,7 +113,7 @@ public class ML {
 		this.testing_classes2= new Mat(this.testingSamples,1,CvType.CV_32F);
 		this.readFile("training_data.txt", training_data, training_classes, training_classes2, true);
 		this.readFile("testing_data.txt", testing_data, testing_classes, testing_classes2, false);
-		//System.out.println(training_data.dump());
+		System.out.println(testing_data.dump());
 	}
 	
 	 public void readFile2(String e, Mat set, Mat set_classes, Mat classes2, boolean isTraining){
@@ -333,11 +334,12 @@ public class ML {
 		CvNormalBayesClassifier bayes= new CvNormalBayesClassifier();
 		 bayes.train(training_data, training_classes2);
 		 bayes.save("bayes");
-		 System.out.println(bayes.predict(testing_data.row(2)));
+		// System.out.println(bayes.predict(testing_data.row(2)));
 			double classifications[]= new double[this.testingSamples];
 			bayesPredicted= new double[this.testingSamples];
 			for(int i=0;i<this.testingSamples;i++){
 				bayesPredicted[i]=bayes.predict(testing_data.row(i));
+				//System.out.println(bayesPredicted[i]+"="+actual.get(i, 0)[0]);
 				classifications[i]= actual.get(i, 0)[0];	
 			}
 			this.computeAccuracy(classifications, bayesPredicted);
