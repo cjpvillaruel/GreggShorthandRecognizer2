@@ -431,8 +431,8 @@ public class GreggRecognizerGUI extends JFrame {
 			
 			else if(e.getSource()== rButton){
 				//find features
-				Preprocessing p= new Preprocessing();
-				String[] featureStr= p.getFeatures(path, 1).split("=");
+				FeatureExtraction fextract= new FeatureExtraction();
+				String[] featureStr= fextract.getFeatures(path, 1).split("=");
 				String[] features= featureStr[0].split(",");
 				Mat featuresMat= new Mat(1,features.length-1, CvType.CV_32F);
 				
