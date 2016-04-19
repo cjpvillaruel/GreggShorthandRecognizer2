@@ -17,8 +17,8 @@ import org.opencv.highgui.Highgui;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.imgproc.Moments;
 
-public class FeatureExtraction {
-	private static final int ATTRIBUTES = 13;
+public class FeatureExtraction implements Constants {
+
 	private int index;
 	private Mat image;
 
@@ -40,7 +40,7 @@ public class FeatureExtraction {
 		
 		int width=0, height=0;
 		double m00=0,m01=0, m10=0;
-
+		Mat hu= new Mat();
 		// finding the contours
 		ArrayList<MatOfPoint> contours = new ArrayList<MatOfPoint>();
 		Imgproc.threshold(image, image, 0, 255, Imgproc.THRESH_OTSU);
@@ -90,7 +90,7 @@ public class FeatureExtraction {
                 	minY= rect.y;
                 }
         	}
-			Mat result = image2.submat(minY, maxY, minX, maxX);
+			Mat result = image.submat(minY, maxY, minX, maxX);
 			width= result.cols();
 			height= result.rows();
 			Moments m= Imgproc.moments(result, true);
@@ -98,6 +98,7 @@ public class FeatureExtraction {
 			m01 = m.get_m01();
 			m10= m.get_m10();
 			area1 = m00;
+			Imgproc.HuMoments(m, hu); 
         }
         else{
 	        for (MatOfPoint contour : contours) { 	  	
@@ -112,7 +113,7 @@ public class FeatureExtraction {
 	            // Get bounding rect of contour
 	            Rect rect = Imgproc.boundingRect(points);
 	            //crop
-	        	Mat result = image2.submat(rect);
+	        	Mat result = image.submat(rect);
 	        	if(rect.width> width || rect.height > height){
 	        		
 	        		width= rect.width;
@@ -123,7 +124,7 @@ public class FeatureExtraction {
 	        	m01 = m.get_m01();
 	        	m10= m.get_m10();
 	        	//area1 = m00;
-	        	
+	        	Imgproc.HuMoments(m, hu);
 	        	//Highgui.imwrite("images/croppedfeature/"+newfilename, result);
 	        	//System.out.println("moments 01="+m.get_m00() +" height:"+rect.height+" width: "+rect.width);
 	        	//Highgui.imwrite("images/res/result"+i+".png", result);
@@ -142,11 +143,22 @@ public class FeatureExtraction {
         featuresMat.put(0,2,x );
         featuresMat.put(0,3,y );
         featuresMat.put(0,4,area1 );
-//      featuresMat.put(0,5,perimeter );
+
         for(i=0;i<8;i++){
         	double hist=chaincode.get(0, i)[0];
         	hist= Math.round(hist * 100.0) / 100.0;
         	featuresMat.put(0,5+i,hist );
+        }
+        if(hu.rows()==0){
+        	 Moments m= Imgproc.moments(image, false);
+        	 hu= new Mat();
+             Imgproc.HuMoments(m, hu); 
+             
+        }
+        for(i=0;i<7;i++){
+        	double huMoment=hu.get(i, 0)[0];
+        	huMoment= Math.round(huMoment * 100.0) / 100.0;
+        	featuresMat.put(0,13+i,huMoment );
         }
         int size= (int) featuresMat.total() * featuresMat.channels();
         double[] temp = new double[size];

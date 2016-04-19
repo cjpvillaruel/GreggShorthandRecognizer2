@@ -20,8 +20,8 @@ import javax.swing.event.*;
 import java.awt.image.BufferedImage;
 
 import javax.imageio.ImageIO;
-public class Training {
-	private static final int ATTRIBUTES = 13;
+public class Training implements Constants{
+//	private static final int ATTRIBUTES = 20;
 //	private static final int TRAINING_SAMPLES = 1103; 
 //	private static final int TESTING_SAMPLES = 320; 
 //	private static final int CLASSES = 10; 

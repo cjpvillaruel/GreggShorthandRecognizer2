@@ -13,8 +13,7 @@ import org.opencv.highgui.Highgui;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.imgproc.Moments;
 
-public class WordRecognizer {
-	private static final int ATTRIBUTES = 13;
+public class WordRecognizer implements Constants {
 	Shorthand unknown;
 	Mat image;
 	ML ml;

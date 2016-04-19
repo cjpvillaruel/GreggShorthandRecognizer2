@@ -13,6 +13,7 @@ public class TestingResult {
 	Mat svmConf, annConf, bnConf;
 	double overallPresicionANN,overallPresicionSVM, overallPresicionBN; 
 	double overallRecallANN,overallRecallSVM, overallRecallBN; 
+	double accuracyANN, accuracySVM, accuracyBN;
 	public TestingResult(String[] words, ArrayList<Shorthand> samples){
 		this.words= words;
 		this.samples= samples;
@@ -35,17 +36,30 @@ public class TestingResult {
 		
 		return total/data.length;
 	}
-	
+	private double computeAccuracy(Mat confusionMatrix){
+		double totaltp=0;
+		int totalSamples=0;
+		for(int i=0;i<confusionMatrix.rows();i++){
+			for(int j=0;j<confusionMatrix.cols();j++){
+				totaltp += (int)confusionMatrix.get(i,i)[0];
+				totalSamples = (int)confusionMatrix.get(i,j)[0];
+			}
+		}
+		double accuracy = totaltp / totalSamples;
+		return accuracy;
+	}
 	private double[] getPrecision(Mat confusionMatrix){
 		double[] precisionArray= new double[words.length];
 		for(int i=0;i<words.length;i++){
-			//get total sample per word
-			double wordTotal=0;
+			double fp = 0;
 			for(int j=0;j<words.length;j++){
-				wordTotal+=(int)confusionMatrix.get(i,j)[0];
+				if(j != i)
+				fp+=(int)confusionMatrix.get(j,i)[0];
 			}
 			int tp =(int)confusionMatrix.get(i,i)[0]; //true positive
-			double precision= tp/wordTotal*100;
+			double precision =0;
+			if(!(tp== 0 && fp ==0))
+				precision= tp/(tp+fp)*100;
 			precisionArray[i]= precision;
 		}
 		
@@ -55,15 +69,14 @@ public class TestingResult {
 		double[] recallArray= new double[words.length];
 		double recall;
 		for(int i=0;i<words.length;i++){
-			//get total sample per word
-			double wordTotal=0;
+			//get false negative
+			double fn=0;
 			for(int j=0;j<words.length;j++){
-				wordTotal+=(int)confusionMatrix.get(j,i)[0];
+				if(i != j)
+					fn+=(int)confusionMatrix.get(i,j)[0];
 			}
 			int tp =(int)confusionMatrix.get(i,i)[0]; //true positive
-			if(wordTotal!= 0)
-				recall= tp/wordTotal*100;
-			else recall=0;
+			recall= tp/(tp+fn)*100;
 			recallArray[i]= recall;
 		}
 		return recallArray;
@@ -75,12 +88,12 @@ public class TestingResult {
 			for(int j=0;j<words.length;j++){
 				wordTotal+=(int)confusionMatrix.get(i,j)[0];
 			}
-			//get percentage for each value
-			for(int j=0;j<words.length;j++){
-				double tp =confusionMatrix.get(i,j)[0]; 
-				double precision= tp/wordTotal*100;
-				confusionMatrix.put(i, j, precision);
-			}
+//			//get percentage for each value
+//			for(int j=0;j<words.length;j++){
+//				double tp =confusionMatrix.get(i,j)[0]; 
+//				double precision= tp/wordTotal*100;
+//				confusionMatrix.put(i, j, precision);
+//			}
 		}
 		
 	}
@@ -109,6 +122,7 @@ public class TestingResult {
 		double total=0;
 		
 		System.out.println(confusionMatrix.dump());
+		double accuracy = this.computeAccuracy(confusionMatrix);
 		this.convertToPercentage(confusionMatrix);
 		//get precision and recall
 		double[] pre=this.getPrecision(confusionMatrix);
@@ -116,13 +130,15 @@ public class TestingResult {
 		switch(ml){
 			case "ann": this.precisionANN = pre;
 						this.recallANN =rec;
-						
+						this.accuracyANN = accuracy;
 						break;
 			case "svm": this.precisionSVM = pre;
 						this.recallSVM =rec;
+						this.accuracySVM = accuracy;
 						break;
 			case "bn":  this.precisionBN = pre;
 						this.recallBN =rec;
+						this.accuracyBN = accuracy;
 						break;
 		}
 		

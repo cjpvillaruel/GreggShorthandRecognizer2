@@ -60,6 +60,21 @@ public class Sample
        // Save the visualized detection.
        Highgui.imwrite("images/samp.jpg", img);
    }
+   
+   public void copyMat(Mat src, Mat dest){
+	   int srcRows= src.rows();
+	   int srcCols= src.cols();
+	   int destRows= dest.rows();
+	   int destCols= dest.cols();
+	   
+	   for(int i=0;i<srcRows;i++){
+		   for(int j=0;j< srcCols;j++){
+			   double bit= src.get(i,j)[0];
+			   dest.put(i, j, bit);
+			   System.out.println(bit);
+		   }
+	   }
+   }
 	public static Mat getCCH(Mat image){
 		ArrayList<MatOfPoint> contours = new ArrayList<MatOfPoint>();
 		Mat hierarchy = new Mat();
@@ -124,7 +139,7 @@ public class Sample
 //      Mat mat = Mat.eye( 3, 3, CvType.CV_8UC1 );
 //      System.out.println( "mat = " + mat.dump() );
       
-   //   Sample n= new Sample();
+     Sample n= new Sample();
    //   n.templateMatching();
       
       //put text in image
@@ -135,63 +150,61 @@ public class Sample
 //      Highgui.imwrite("images/erosion2.jpg", data);
       
       //getting dct of an image
-      String path = "images/croppedfeature/hear (1).jpg";
-      
+      String path = "images/croppedfeature/go (20).jpg";
+      path = "images/wordseg/img1.png";
       Mat image= Highgui.imread(path,Highgui.IMREAD_GRAYSCALE);
       ArrayList<MatOfPoint> contours = new ArrayList<MatOfPoint>();
+      
       Imgproc.threshold(image, image, 0, 255, Imgproc.THRESH_OTSU);
       Imgproc.threshold(image, image, 220, 128, Imgproc.THRESH_BINARY_INV);
-      //Imgproc.findContours(image, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_NONE);
-      Mat cch= getCCH(image);
+      Mat newImg = new Mat(45,100, image.type());
       
-      // System.out.println(contours.get(0).dump());
-      
-      //get the freeman chain code from the contours
-//      int rows= contours.get(0).rows();
-//      Mat chainHistogram =Mat.zeros(1, 8, CvType.CV_32F);
-//      int direction = 7;
-//      Mat prevPoint = contours.get(0).row(0);
-//      Mat contour = contours.get(0);
-// 
-//      for(int i=1;i<rows;i++){
-//    	
-//    	  //get the current point
-//    	  double x1 =  contour.get(i-1,0)[1];
-//    	  double y1 =  contour.get(i-1, 0)[0];
-//    	  
-//    	  //get the second point
-//    	  double x2 =  contour.get(i,0)[1];
-//    	  double y2 =  contour.get(i,0)[0];
-//    	  
-//    	  
-//    	  if(x2==x1 && y2 == y1+1)
-//    		  direction =0;
-//    	  else if(x2 == x1-1 && y2 == y1+1)
-//    		  direction =1;
-//    	  else if(x2 == x1-1 && y2 == y1)
-//	    	  direction =2;
-//    	  else if(x2 == x1-1 && y2 == y1-1)
-//	    	  direction =3;
-//    	  else if(x2 == x1 && y2 == y1-1 )
-//	    	  direction =4;
-//    	  else if(x2 == x1+1 && y2 == y1-1)
-//	    	  direction =5;
-//    	  else if(x2 == x1+1 && y2 == y1)
-//	    	  direction =6;
-//    	  else if(x2== x1+1 && y2== y1+1)
-//	    	  direction =7;
-//    	  else
-//    		  System.out.print("err");
-//    	  double counter = chainHistogram.get(0, direction)[0];
-//    	  chainHistogram.put(0, direction, ++counter);
-//    	  System.out.print(direction);
-//    	
-//      }
-//  
-//      Scalar alpha = new Scalar(rows-1); // the factor
-//      Core.divide(chainHistogram,alpha,chainHistogram);
-//      
-//      System.out.println("\n"+chainHistogram.dump());
+      newImg.setTo(new Scalar(0));
+      n.copyMat(image, newImg);
      
+      int vgap= 25;
+      int hgap= 45/3;
+      
+      Moments m= Imgproc.moments(image, false);
+      Mat hu= new Mat();
+      Imgproc.HuMoments(m, hu); 
+      System.out.println(hu.dump());
+      
+//      //divide the mat into 12 parts then get the features of each part
+//      int count=1;
+//      for(int j=0; j<45; j+=hgap){
+//    	  for(int i=0;i<100;i+=vgap){
+//    		  Mat result = newImg.submat(j, j+hgap, i, i+vgap);
+//    		
+//    		  
+//    		  Moments m= Imgproc.moments(result, false);
+//    		  double m01= m.get_m01();
+//    		  double m00= m.get_m00();
+//    		  double m10 = m.get_m10();
+//    		  int x= m00!=0? (int)(m10/m00):0;
+//    		  int y= m00!=0? (int)(m01/m00):0;
+//    		  Mat hu= new Mat();
+//    		  Imgproc.HuMoments(m, hu); 
+//    		  System.out.println(hu.dump());
+//    		  System.out.println(count+" :"+x+" and "+y);
+//    		  Imgproc.threshold(result, result, 0,254, Imgproc.THRESH_BINARY_INV);
+//    		  Highgui.imwrite("images/submat/"+count+".jpg", result);
+//    		  count++;
+//    		  
+//    	  }
+//      }
+// 
+//    for(int i=vgap;i<100;i+=vgap){
+//	  Point pt1= new Point(i, 0);
+//      Point pt2= new Point(i, 99);
+//      Core.line(newImg, pt1, pt2, new Scalar(0,0,0));
+//  }
+//  for(int i=hgap;i<45;i+=hgap){
+//	  Point pt1= new Point(0, i);
+//      Point pt2= new Point(99, i);
+//      Core.line(newImg, pt1, pt2, new Scalar(0,0,0));
+//  }
+//      Highgui.imwrite("images/submat/copyto.jpg", newImg);
    }
+   
 }

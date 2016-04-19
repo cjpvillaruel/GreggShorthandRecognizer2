@@ -407,6 +407,7 @@ public class Preprocessing {
 		}
 	}
 	public int getAllFeatures2(String folderpath,String filename){
+		System.out.println("Computing features...");
 		int totalSamples=0;
 		//for each word folder inside the selected folderpath,
 		//get the index then iterate on each images to get the features

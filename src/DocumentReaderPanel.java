@@ -10,6 +10,8 @@ import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
@@ -24,6 +26,7 @@ import javax.swing.JTextArea;
 
 
 import org.opencv.core.Core;
+import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.MatOfPoint2f;
@@ -237,7 +240,16 @@ class DocumentReaderPanel extends JPanel implements ActionListener{
 		return false;
 	}
 	private void sortContours(ArrayList<Rect> boxes){
-		
+		Collections.sort( boxes, new Comparator<Rect>() {
+		       public int compare(Rect x1, Rect x2) {
+		         int result = Double.compare(x1.x, x2.x);
+		         if ( result == 0 ) {
+		           // both X are equal -> compare Y too
+		           result = Double.compare(x1.y, x2.y);
+		         } 
+		         return result;
+		      }
+		    });
 	}
 	
 	private void findOverlap(ArrayList<Rect> boxes,Mat image){
@@ -299,17 +311,27 @@ class DocumentReaderPanel extends JPanel implements ActionListener{
 				}
 	        }
 		}		
+		//sort boxes
+		//sortContours(boxesCopy);
 		for(int i=0; i<boxesCopy.size();i++){
 			Rect rect1= boxesCopy.get(i);
 			//Core.rectangle(image,new Point(rect1.x-3,rect1.y-3),new Point(rect1.x+rect1.width+3,rect1.y+rect1.height+3),new Scalar(0, 0, 255),1);
 			//recognize the area in the rectangle
 			Rect letter= new Rect(rect1.x-3, rect1.y-3, rect1.width+3, rect1.height+3);
+			System.out.println("rows"+image.rows()+" and "+ (letter.y+letter.width));
+    		System.out.println("cols"+image.cols()+" and "+ (letter.x+letter.height));
+			if(image.cols()< letter.x+letter.height)
+				continue;
     		Mat result = image.submat(letter);
+    		
     		Imgproc.cvtColor(result, result, Imgproc.COLOR_RGB2GRAY);
-			Shorthand word = new Shorthand(result);
+			
 			//print image
-			Highgui.imwrite("images/wordseg/img"+i+".png", result);
-			System.out.println(i);
+			Highgui.imwrite("images/wordseg/img"+i+".jpg", result);
+			result= Highgui.imread("images/wordseg/img"+i+".jpg", Highgui.IMREAD_GRAYSCALE);
+			
+			Shorthand word = new Shorthand(result);
+			System.out.println(i+" of "+boxesCopy.size());
 			
 			try {
 				recognizer.recognize(word);
@@ -317,7 +339,7 @@ class DocumentReaderPanel extends JPanel implements ActionListener{
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			//recognizer.recognize(word);
+			
 			Core.rectangle(image,new Point(rect1.x-3,rect1.y-3),new Point(rect1.x+rect1.width+3,rect1.y+rect1.height+3),new Scalar(0, 0, 255),1);
 			
 			//put the label into the image
@@ -325,20 +347,78 @@ class DocumentReaderPanel extends JPanel implements ActionListener{
 			String selectedML= (String) mlSelect.getItemAt(mlSelect.getSelectedIndex());
 			//System.out.println(selectedML);
 			if(selectedML == "ANN"){
-				Core.putText(image, word.annRes, new Point(rect1.x,rect1.y), Core.FONT_HERSHEY_SIMPLEX, 0.4, new Scalar(0,0,0),1); 
+				Core.putText(image, i+" "+word.annRes, new Point(rect1.x,rect1.y), Core.FONT_HERSHEY_SIMPLEX, 0.4, new Scalar(0,0,0),1); 
 				this.transcribed+= word.annRes+" ";
 			}
 			if(selectedML == "SVM"){
-				Core.putText(image, word.svmRes, new Point(rect1.x,rect1.y), Core.FONT_HERSHEY_SIMPLEX, 0.4, new Scalar(0,0,0),1); 
+				Core.putText(image, i+" "+word.svmRes, new Point(rect1.x,rect1.y), Core.FONT_HERSHEY_SIMPLEX, 0.4, new Scalar(0,0,0),1); 
 				this.transcribed+= word.svmRes+" ";
 			}
 			if(selectedML == "Naive Bayes"){
-				Core.putText(image, word.bnRes, new Point(rect1.x,rect1.y), Core.FONT_HERSHEY_SIMPLEX, 0.4, new Scalar(0,0,0),1); 
+				Core.putText(image, 1+" "+word.bnRes, new Point(rect1.x,rect1.y), Core.FONT_HERSHEY_SIMPLEX, 0.4, new Scalar(0,0,0),1); 
 				this.transcribed+= word.bnRes+" ";
 			}
 		}
 	}
 	
+	private void boundDocument(String path){
+		Mat image= Highgui.imread(path,Highgui.IMREAD_GRAYSCALE);
+		Mat data1= Highgui.imread(path);
+		Mat image2= Highgui.imread(path,Highgui.IMREAD_COLOR);
+        Imgproc.threshold(image, image, 0, 255, Imgproc.THRESH_OTSU);
+        Mat horizontal = Mat.zeros(image.rows(), 1, CvType.CV_16S);
+        Mat vertical = Mat.zeros(1, image.cols(), CvType.CV_16S);
+        
+        //get horizontal histogram
+        for(int i=0;i< image.rows();i++){
+        	for(int j=0; j< image.cols();j++){
+        		double val = image.get(i, j)[0];
+        		if(val == 0){
+        			double h= horizontal.get(i, 0)[0]+1;
+        			horizontal.put(i, 0, h);
+        			double v= vertical.get(0, j)[0]+1;
+        			vertical.put(0, j, v);
+        		}
+        	}
+        }
+        Mat hori = new Mat(image.rows(),image.cols(), image.type());
+        Mat ver = new Mat(image.rows(),image.cols(), image.type());
+        hori.setTo(new Scalar(255));
+        ver.setTo(new Scalar(255));
+        for(int i=0;i< image.rows();i++){
+        	for(int j=0; j< image.cols();j++){
+        		double h = horizontal.get(i, 0)[0];
+        		if(h > 4){
+        			double[] color={0,0,255};
+        			hori.put(i,j , color);
+        		}
+        		double v = vertical.get(0, j)[0];
+        		if(v > 4){
+        			double[] color={0,255,0};
+        			ver.put(i,j , color);
+        		}
+        	}
+        }
+        
+        Highgui.imwrite("images/bound2.png", hori);
+        Highgui.imwrite("images/bound.png", ver);
+        Mat intersect = new Mat(image.rows(),image.cols(), image.type());
+        intersect.setTo(new Scalar(255));
+        
+        for(int i=0;i< image.rows();i++){
+        	for(int j=0; j< image.cols();j++){
+        		double h = hori.get(i, j)[0];
+        		double v = ver.get(i, j)[0];
+        		double[] color={0,255,0};
+        		if(v == 0 && h ==0){
+        			intersect.put(i,j , color);
+        		}		
+        	}
+        }
+       
+        Highgui.imwrite("images/bound2.png", intersect);
+        System.out.println(horizontal.dump());
+	}
 	
 	private void readDocument(String path){
 		transcribed="";
@@ -431,9 +511,9 @@ class DocumentReaderPanel extends JPanel implements ActionListener{
 	public static void main(String[] args){
 		DocumentReaderPanel p= new DocumentReaderPanel(null);
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-		String path= "images/Picture1.png";
-		
-		p.readDocument("images/Picture1.png");
+		String path= "images/reader/data (2).jpg";
+		p.boundDocument(path);
+		//p.readDocument("images/Picture1.png");
 		Rectangle a = new Rectangle(1, 2, 4, 2);
 		Rectangle b = new Rectangle(2,1,1,2);
 		Rectangle c = new Rectangle(4,0,1,1);

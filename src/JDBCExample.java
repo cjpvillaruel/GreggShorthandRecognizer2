@@ -37,7 +37,7 @@ public class JDBCExample {
       //read file
       String sCurrentLine;
       BufferedReader br = null;
-		br = new BufferedReader(new FileReader("words.txt"));
+		br = new BufferedReader(new FileReader("words2.txt"));
 
 		while ((sCurrentLine = br.readLine()) != null) {
 			System.out.println(sCurrentLine);

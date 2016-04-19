@@ -283,17 +283,17 @@ class TestingPanel extends JPanel implements ActionListener{
 	    aPanel.add(scroll3);
 	    
 	    String[] columnNames2 = {" ","ANN","SVM","BN"};
-	    Object[][] data2 = {{"PRECISION","","" ,""},{"RECALL","","" ,""} };
+	    Object[][] data2 = {{"ACCURACY","","" ,""},{"PRECISION","","" ,""},{"RECALL","","" ,""} };
 	    model = new DefaultTableModel(data2, columnNames2);
 	    TableModel model2 = new DefaultTableModel(data2, columnNames2);
 	    summaryTable = new JTable(model2);
 	    JScrollPane scroll4= new JScrollPane(summaryTable);
-	    scroll4.setBounds(10, 30, 380, 55);
+	    scroll4.setBounds(10, 30, 380, 70);
 	    aPanel.add(scroll4);
 	    
 	    
 	    viewConfButton= new ClassyButton("View Confusion Matrix", "blue");
-	    viewConfButton.setBounds(200, 100, 200, 30);
+	    viewConfButton.setBounds(200, 120, 200, 30);
 	    viewConfButton.addActionListener(this);
 	    aPanel.add(viewConfButton);
 	    
@@ -460,9 +460,13 @@ class TestingPanel extends JPanel implements ActionListener{
 		summaryTable.setValueAt(res.overallPresicionSVM, 0, 2);
 		summaryTable.setValueAt(res.overallPresicionBN, 0, 3);
 		
-		summaryTable.setValueAt(res.overallRecallANN, 1, 1);
-		summaryTable.setValueAt(res.overallRecallSVM, 1, 2);
-		summaryTable.setValueAt(res.overallRecallBN, 1, 3);
+		summaryTable.setValueAt(res.overallPresicionANN, 1, 1);
+		summaryTable.setValueAt(res.overallPresicionSVM, 1, 2);
+		summaryTable.setValueAt(res.overallPresicionBN, 1, 3);
+		
+		summaryTable.setValueAt(res.overallRecallANN, 2, 1);
+		summaryTable.setValueAt(res.overallRecallSVM, 2, 2);
+		summaryTable.setValueAt(res.overallRecallBN, 2, 3);
 		//System.out.println("results: \nANN:"+res.overallPresicionANN+"\nSVM"+res.overallPresicionSVM+"\nBN"+res.overallPresicionBN);
 		
 	}

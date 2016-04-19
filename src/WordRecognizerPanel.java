@@ -144,7 +144,7 @@ class WordRecognizerPanel extends JPanel implements ActionListener{
 	    d1.setLocationRelativeTo(null);
 		d1.setResizable(false);
 		
-		System.out.print("he");
+		
 	}
 	
 	private void addHeaderComponents(){
