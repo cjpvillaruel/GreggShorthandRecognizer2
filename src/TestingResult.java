@@ -39,13 +39,14 @@ public class TestingResult {
 	private double computeAccuracy(Mat confusionMatrix){
 		double totaltp=0;
 		int totalSamples=0;
-		for(int i=0;i<confusionMatrix.rows();i++){
-			for(int j=0;j<confusionMatrix.cols();j++){
-				totaltp += (int)confusionMatrix.get(i,i)[0];
-				totalSamples = (int)confusionMatrix.get(i,j)[0];
+		for(int i=0;i< confusionMatrix.rows();i++){
+			for(int j=0;j< confusionMatrix.cols();j++){
+				if(j==i)
+					totaltp += (int)confusionMatrix.get(i,j)[0];
+				totalSamples+= (int)confusionMatrix.get(i,j)[0];
 			}
 		}
-		double accuracy = totaltp / totalSamples;
+		double accuracy =(totaltp/totalSamples*100)*100/100;
 		return accuracy;
 	}
 	private double[] getPrecision(Mat confusionMatrix){

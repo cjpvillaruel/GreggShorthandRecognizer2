@@ -24,7 +24,7 @@ public class Shorthand{
 	File file;
 	int id;
 	double width,height,x,y, area;
-	
+	Mat features;
 	public Shorthand(File file, String word, int id){
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 		this.file=file;
@@ -45,6 +45,10 @@ public class Shorthand{
 	public Shorthand(Mat image){
 		this.image = image;
 	}
+	public Shorthand(Mat features, int index){
+		this.features = features;
+		this.id = index;
+	}
 	public Shorthand(File file){
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 		this.file = file;
@@ -56,14 +60,24 @@ public class Shorthand{
 		this.svmRes= svmRes;
 		this.annRes= annRes;
 		this.bnRes= bnRes;
-		
-		
+	}
+	public void setId(int id){
+		this.id= id;
+	}
+	public void setFeatures(Mat features){
+		this.features = features;
 	}
 	public String getPath(){
 		return filepath;
 	}
 	public Mat getImage(){
 		return image;
+	}
+	public int getId(){
+		return this.id;
+	}
+	public Mat getFeatures(){
+		return this.features;
 	}
 	
 }

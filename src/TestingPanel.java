@@ -41,8 +41,8 @@ import javax.swing.table.TableModel;
 
 import org.opencv.core.Mat;
 
-class TestingPanel extends JPanel implements ActionListener{
-	private static final int NUM_CLASSES=30;
+class TestingPanel extends JPanel implements ActionListener, Constants{
+	
 	
 	private ArrayList<Shorthand> testingSamples;
 	private ClassyButton  selectFolder1,selectFolder2,selectDest, run,crop;
@@ -75,7 +75,7 @@ class TestingPanel extends JPanel implements ActionListener{
 		this.card= card;
 		addHeaderComponents();
 		addComponents();
-		p= new Preprocessing(30);
+		p= new Preprocessing(NUM_CLASSES);
 		db= new WordDB();
 		testingSamples= new ArrayList<Shorthand>();
 		r= new WordRecognizer();
@@ -94,7 +94,7 @@ class TestingPanel extends JPanel implements ActionListener{
 		selectData= new JLabel("Select Dataset:");
 		selectData.setBounds(50,30,100,30);
 		pPanel.add(selectData);
-		String[] list= {"1","2","3","4"};
+		String[] list= {"1","2","3","4","5","6"};
 		setList= new JComboBox(list);
 		setList.setBounds(150, 30, 80, 25);
 		pPanel.add(setList);
@@ -220,7 +220,7 @@ class TestingPanel extends JPanel implements ActionListener{
 		//create panel for confusion matrix
 		cPanel= new JPanel();
 		cPanel.setLayout(null);
-		cTable= new JTable(31,31){
+		cTable= new JTable(NUM_CLASSES+1,NUM_CLASSES+1){
 		    @Override
 		    public Component prepareRenderer(TableCellRenderer renderer, int row, int col) {
 		        Component comp = super.prepareRenderer(renderer, row, col);
@@ -346,8 +346,8 @@ class TestingPanel extends JPanel implements ActionListener{
 		//iterate on each folders inside the folder
 		 File[] files = new File(folderpath).listFiles();
 		 
-		 wordClasses= new String[files.length];
-		 int classes[]= new int[files.length];
+		 wordClasses= new String[NUM_CLASSES];
+		 int classes[]= new int[NUM_CLASSES];
 		 int i=0;
 		 for (File file : files) {
 			 if (file.isDirectory()) {
@@ -456,9 +456,9 @@ class TestingPanel extends JPanel implements ActionListener{
 			DefaultTableModel model = (DefaultTableModel)accuracyTable.getModel();
 			model.addRow(row);	
 		}
-		summaryTable.setValueAt(res.overallPresicionANN, 0, 1);
-		summaryTable.setValueAt(res.overallPresicionSVM, 0, 2);
-		summaryTable.setValueAt(res.overallPresicionBN, 0, 3);
+		summaryTable.setValueAt(res.accuracyANN, 0, 1);
+		summaryTable.setValueAt(res.accuracySVM, 0, 2);
+		summaryTable.setValueAt(res.accuracyBN, 0, 3);
 		
 		summaryTable.setValueAt(res.overallPresicionANN, 1, 1);
 		summaryTable.setValueAt(res.overallPresicionSVM, 1, 2);
@@ -534,9 +534,9 @@ class TestingPanel extends JPanel implements ActionListener{
 				//this.readImages2(path);
 				int trainingSamples=p.getAllFeatures2(path, "training_data");
 				File folder= new File(path);
-				int classes= folder.listFiles().length;
+//				int classes= folder.listFiles().length;
 
-				Training train= new Training(classes, trainingSamples);
+				Training train= new Training(NUM_CLASSES, trainingSamples);
 
 			}
 			else if(test.isSelected()){

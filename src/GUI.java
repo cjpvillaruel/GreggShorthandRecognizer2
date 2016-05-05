@@ -125,6 +125,7 @@ class Menu extends JPanel implements ActionListener, MouseListener{
         this.add(wordIcon);
         
         
+        
     	ImageIcon icon = new ImageIcon(docuImage);
     	documentIcon= new JLabel();
         documentIcon.setIcon(icon);
@@ -198,6 +199,8 @@ class Menu extends JPanel implements ActionListener, MouseListener{
 		// TODO Auto-generated method stub
 		
 	}
+	
+	
 	@Override
 	public void mouseExited(MouseEvent arg0) {
 		// TODO Auto-generated method stub

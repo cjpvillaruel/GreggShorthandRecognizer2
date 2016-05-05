@@ -49,7 +49,7 @@ class DocumentReaderPanel extends JPanel implements ActionListener{
 	private File[] files;
 	private JLabel imageLabel;
 	private WordRecognizer recognizer;
-	private static final int MARGIN= 3;
+	private static final int MARGIN= 5;
 	private String transcribed="";
 	
 	public DocumentReaderPanel(MainPanel1 card){
@@ -347,15 +347,15 @@ class DocumentReaderPanel extends JPanel implements ActionListener{
 			String selectedML= (String) mlSelect.getItemAt(mlSelect.getSelectedIndex());
 			//System.out.println(selectedML);
 			if(selectedML == "ANN"){
-				Core.putText(image, i+" "+word.annRes, new Point(rect1.x,rect1.y), Core.FONT_HERSHEY_SIMPLEX, 0.4, new Scalar(0,0,0),1); 
+				Core.putText(image, word.annRes, new Point(rect1.x,rect1.y), Core.FONT_HERSHEY_SIMPLEX, 0.4, new Scalar(0,0,0),1); 
 				this.transcribed+= word.annRes+" ";
 			}
 			if(selectedML == "SVM"){
-				Core.putText(image, i+" "+word.svmRes, new Point(rect1.x,rect1.y), Core.FONT_HERSHEY_SIMPLEX, 0.4, new Scalar(0,0,0),1); 
+				Core.putText(image,word.svmRes, new Point(rect1.x,rect1.y), Core.FONT_HERSHEY_SIMPLEX, 0.4, new Scalar(0,0,0),1); 
 				this.transcribed+= word.svmRes+" ";
 			}
 			if(selectedML == "Naive Bayes"){
-				Core.putText(image, 1+" "+word.bnRes, new Point(rect1.x,rect1.y), Core.FONT_HERSHEY_SIMPLEX, 0.4, new Scalar(0,0,0),1); 
+				Core.putText(image, word.bnRes, new Point(rect1.x,rect1.y), Core.FONT_HERSHEY_SIMPLEX, 0.4, new Scalar(0,0,0),1); 
 				this.transcribed+= word.bnRes+" ";
 			}
 		}

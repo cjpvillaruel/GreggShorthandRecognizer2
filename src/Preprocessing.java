@@ -19,7 +19,7 @@ import javax.swing.event.*;
 import java.awt.image.BufferedImage;
 
 import javax.imageio.ImageIO;
-public class Preprocessing {
+public class Preprocessing implements Constants{
 	private static final int HEADERMARGIN = 95;
 	private static final int LEFTMARGIN = 215;
 	private static final int BOXHEIGHT= 80;
@@ -201,11 +201,12 @@ public class Preprocessing {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-       
+        File[] files = new File(path).listFiles();
 		for(int i=1 ; i <= fileNumber; i++){
 			int wordCount=0;
-			Mat data= Highgui.imread(path+"/data ("+i+").jpg",Highgui.IMREAD_GRAYSCALE);
-			Mat data1= Highgui.imread(path+"/data ("+i+").jpg");
+			
+			Mat data= Highgui.imread(files[i-1].getAbsolutePath(),Highgui.IMREAD_GRAYSCALE);
+			Mat data1= Highgui.imread(files[i-1].getAbsolutePath());
 			Mat destination= data.clone();
 	        Imgproc.threshold(data,destination,210,255,Imgproc.THRESH_BINARY);
 	        Point margin= templateMatching(data1);
@@ -392,7 +393,7 @@ public class Preprocessing {
 	
 	public void saveFile(String filename, String text){
 		try{
-			File file = new File(filename+".txt");
+			File file = new File(filename);
 			// if file doesnt exists, then create it
 			if (!file.exists()) {
 				file.createNewFile();
@@ -406,9 +407,28 @@ public class Preprocessing {
 		catch(Exception e){	
 		}
 	}
+	public void saveArff(String filename, String text){
+		String str="";
+		str+="@relation training_data\n";
+		String[] attributeLabels={"width","height","x","y","area","h1","h2","h3","h4","h5","h6","h7","h8"};
+		for(int n=0;n<ATTRIBUTES;n++){
+			str+="@attribute "+attributeLabels[n]+" numeric\n";
+		}
+		
+		str+="@attribute class {";
+		for(int n=0;n<NUM_CLASSES;n++){
+			str+=(n+1)+"";
+			if(n!=NUM_CLASSES-1)
+				str+=",";
+		}
+		str+="}";
+		str+= "\n\n@data\n"+text;
+		saveFile(filename+".arff", str);
+	}
 	public int getAllFeatures2(String folderpath,String filename){
 		System.out.println("Computing features...");
 		int totalSamples=0;
+		ArrayList<Shorthand> trainingData = new ArrayList<Shorthand>(); 
 		//for each word folder inside the selected folderpath,
 		//get the index then iterate on each images to get the features
 		String test="",data2="";
@@ -423,9 +443,13 @@ public class Preprocessing {
 					for (File wordImage : wordFolder) {
 						//get features of an image
 						String[] str= fextract.getFeatures(wordImage.getAbsolutePath(), index).split("=");
+//						Mat features= fextract.featuresMat;
+//						Shorthand sample = new Shorthand(features, index);
+//						trainingData.add(sample);
 						totalSamples++;
 						test+=str[0]+"\n";
 						data2+=str[1]+"\n";
+						
 					}
 				} catch (ClassNotFoundException | SQLException e) {
 					e.printStackTrace();
@@ -433,9 +457,28 @@ public class Preprocessing {
 			}//endif
 		}//endfor
 
-		 saveFile(filename, test);
-		 saveFile(filename+"_svm", data2);
+
+		saveArff(filename,test);
+		saveFile(filename+"_svm.txt", data2); 
 		return totalSamples;	
+	}
+	public void printFeatures(ArrayList<Shorthand> trainingData, String filename){
+		String str1="";
+		String str2="";
+		for(int i=0;i < trainingData.size();i++){
+			int index=trainingData.get(i).id;
+			str2+=index;
+			Mat features= trainingData.get(i).features;
+			for(int j=0;j< ATTRIBUTES;j++){
+				double feature=features.get(0, j)[0];
+				str1+=feature+",";
+				str2+= " "+(j+1)+":"+ feature;
+			}
+			str2+="\n";
+			str1+=index+"\n";
+		}
+		saveFile(filename,str1);
+		saveFile(filename+"_svm", str2); 
 	}
 	public int getAllFeatures(String folderpath,String filename){
 
@@ -560,8 +603,10 @@ public class Preprocessing {
 //		Imgproc.erode(word, word, structElement);
 //		Highgui.imwrite("images/thinned/dilate.jpg",word);
 		String path= "images\\training_words";
+		path= "images\\samples_for_training_60";
 		String path2= "images\\testing_words";
-		int trainingSamples=p.getAllFeatures2(path, "training_data");
+		path2="images\\samples_for_testing_60"; 
+		int trainingSamples=p.getAllFeatures2(path2, "testing_data");
 		//int testingSamples= p.getAllFeatures2(path2, "testing_data");
 //		int trainingSamples=2400;
 //		int testingSamples=840;

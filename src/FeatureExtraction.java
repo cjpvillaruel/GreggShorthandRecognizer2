@@ -21,6 +21,7 @@ public class FeatureExtraction implements Constants {
 
 	private int index;
 	private Mat image;
+	public Mat featuresMat;
 
 	public FeatureExtraction(){
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
@@ -35,7 +36,7 @@ public class FeatureExtraction implements Constants {
 	**/	
 	private Mat computeFeatures(Mat image){
 		
-		Mat featuresMat= new Mat(1,ATTRIBUTES, CvType.CV_32F);
+		this.featuresMat= new Mat(1,ATTRIBUTES, CvType.CV_32F);
 		//get feature:
 		
 		int width=0, height=0;
@@ -164,7 +165,7 @@ public class FeatureExtraction implements Constants {
         double[] temp = new double[size];
         double[] a= new double[ATTRIBUTES];
         temp=featuresMat.get(0,3);
-     
+        this.featuresMat= featuresMat;
         return featuresMat;
 	}
 	/**
@@ -266,6 +267,7 @@ public class FeatureExtraction implements Constants {
 	public String getFeatures(String path, int index){
 		Mat image= Highgui.imread(path,Highgui.IMREAD_GRAYSCALE);
 		Mat features= this.computeFeatures(image);
+		this.featuresMat= features;
 		return formatFeatures(features, index);
 	}
 	public static void main(String[] args) {
