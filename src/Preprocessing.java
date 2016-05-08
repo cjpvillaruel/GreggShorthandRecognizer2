@@ -459,6 +459,7 @@ public class Preprocessing implements Constants{
 
 
 		saveArff(filename,test);
+		saveFile(filename+".txt",test);
 		saveFile(filename+"_svm.txt", data2); 
 		return totalSamples;	
 	}

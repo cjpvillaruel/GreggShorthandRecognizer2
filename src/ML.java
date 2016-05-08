@@ -11,6 +11,11 @@ import org.opencv.imgproc.Imgproc;
 import org.opencv.highgui.Highgui;
 import org.opencv.ml.*;
 
+import weka.classifiers.Classifier;
+import weka.core.DenseInstance;
+import weka.core.Instance;
+import weka.core.Instances;
+
 import java.util.*;
 import java.io.*;
 import java.awt.*;
@@ -29,13 +34,30 @@ public class ML implements Constants{
 	public Mat training_data, testing_data;
 	private Mat training_classes, testing_classes, training_classes2, testing_classes2;
 	private Mat actual, predicted, classificationResult;
-	
+	private Instances testdata;
 	double[] svmPredicted, bayesPredicted, classifications;
-	
+	Classifier mlp,svm, nb;
 	int trainingSamples, classes, testingSamples;
-	CvSVM svm;
+	CvNormalBayesClassifier bayes;
+	
 	TrainPanel trainpanel;
 	public ML(){
+		BufferedReader reader2;
+		this.mlp= null;
+		this.bayes = null;
+		try {
+			reader2 = new BufferedReader(new FileReader("testing_data.arff"));
+			testdata = new Instances(reader2);
+			reader2.close();
+			mlp = (Classifier) weka.core.SerializationHelper.read("mlp.model");
+			svm = (Classifier) weka.core.SerializationHelper.read("svm.model");
+			nb = (Classifier) weka.core.SerializationHelper.read("naivebayes.model");
+			
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
 		
 	}
 	public ML(int training_samples,int testing_samples, int classes){
@@ -59,7 +81,12 @@ public class ML implements Constants{
 		   	this.testing_classes= Mat.zeros(this.testingSamples,this.classes,CvType.CV_32F);
 		   	
 			this.readFile("testing_data.txt", testing_data, testing_classes, testing_classes2, false);
-			this.predictData();
+			try {
+				this.predictData();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 	}
 	public ML(int training_samples, int classes, TrainPanel trainpanel){
 		this.trainpanel = trainpanel;
@@ -353,7 +380,7 @@ public class ML implements Constants{
 		 
 		 System.out.println("Done.");
 	}
-	private void predictData(){
+	private void predictData() throws IOException{
 		System.out.println(testing_classes2.dump());
 		double[] resultsANN= new double[testingSamples];
 		double[] resultsBN =new double[testingSamples];
@@ -367,7 +394,7 @@ public class ML implements Constants{
 				resultsSVM[i]= results[1];
 				resultsBN[i]= results[2];
 				System.out.println(" ANN: "+results[0]+" BN: "+results[2]+" SVM: "+results[1]);
-			} catch (IOException e) {
+			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
@@ -382,29 +409,30 @@ public class ML implements Constants{
 	}
 	
 	
-	public double[] predict(Mat data, int classification) throws IOException{
+	public double[] predict(Mat data, int classification) throws Exception{
 		//load ann
-
+		// Create empty instance with three attribute values
+		Instance inst = new DenseInstance(ATTRIBUTES+1); 
+		for(int i=0;i<=ATTRIBUTES;i++){
+			if(i== ATTRIBUTES){
+				inst.setValue(testdata.attribute(i), classification); 
+				break;
+			}
+			double val = data.get(0, i)[0];
+			inst.setValue(testdata.attribute(i), val); 
+		}
 		
-		 double results[]= new double[3];
-		 CvANN_MLP ann= new CvANN_MLP();
-		 ann.load("ann");
-		 Mat classificationResults= new Mat(1, this.classes,CvType.CV_64F);
-		 ann.predict(data, classificationResults);
-		 results[0]=getMaximum(classificationResults);
-		//load svm
-		 String input= classification+" ";
-		 for(int i=0;i<data.cols();i++){
-			 input+= (i+1)+":"+data.get(0, i)[0]+" ";
-		 }
-		 Svm_predict a = new Svm_predict();
-		 results[1]= (int)a.Svm_predict("training_data_svm.txt.model",input);
-		//load bayes
-		 CvNormalBayesClassifier bayes= new CvNormalBayesClassifier();
-		 bayes.load("bayes");
-		 results[2]= (int)bayes.predict(data);
+		testdata.setClassIndex(13);
+		
+		double mlplabel = mlp.classifyInstance(inst);
+		double svmlabel = svm.classifyInstance(inst);
+		double nblabel = nb.classifyInstance(inst);
+		double results[]= new double[3];
 		 
-		 return results;
+		results[0]=mlplabel+1;
+		results[1]= svmlabel+1;
+		results[2]= nblabel+1;
+		return results;
 		
 	}
 	

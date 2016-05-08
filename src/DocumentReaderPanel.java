@@ -335,7 +335,7 @@ class DocumentReaderPanel extends JPanel implements ActionListener{
 			
 			try {
 				recognizer.recognize(word);
-			} catch (ClassNotFoundException | IOException | SQLException e) {
+			} catch ( Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}

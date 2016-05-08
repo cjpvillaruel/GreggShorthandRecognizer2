@@ -1,0 +1,23 @@
+
+.data0.chart-bar {
+     -fx-background-color: rgb(253, 86, 54);
+}
+.data1.chart-bar {
+     -fx-background-color: rgb(254, 163, 20);
+}
+.data2.chart-bar {
+    -fx-background-color:rgb(81, 184, 89);
+}
+
+.chart-line-symbol { 
+    -fx-background-color: transparent, transparent; 
+}
+.default-color0.chart-legend-item-symbol{
+   -fx-background-color: rgb(253, 86, 54);
+}
+.default-color1.chart-legend-item-symbol{
+   -fx-background-color: rgb(254, 163, 20);
+}
+.default-color2.chart-legend-item-symbol{
+    -fx-background-color:rgb(81, 184, 89);
+}

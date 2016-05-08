@@ -459,7 +459,7 @@ public class GreggRecognizerGUI extends JFrame {
 						// TODO Auto-generated catch block
 						e1.printStackTrace();
 					}
-				} catch (IOException e1) {
+				} catch ( Exception e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
 				}

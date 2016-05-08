@@ -7,14 +7,35 @@ import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.Image;
 import java.awt.Scrollbar;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
+
+import javafx.scene.Group;
+import javafx.scene.Node;
+import javafx.scene.Scene;
+import javafx.scene.chart.BarChart;
+import javafx.scene.chart.CategoryAxis;
+import javafx.scene.chart.LineChart;
+import javafx.scene.chart.NumberAxis;
+import javafx.scene.chart.XYChart;
+import javafx.scene.effect.Reflection;
+import javafx.scene.layout.StackPane;
+import javafx.scene.text.Text;
+import javafx.stage.Stage;
 
 import javax.imageio.ImageIO;
 import javax.swing.ButtonGroup;
@@ -23,6 +44,7 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
@@ -31,6 +53,7 @@ import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingWorker;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
@@ -39,18 +62,33 @@ import javax.swing.table.TableColumn;
 import javax.swing.table.TableColumnModel;
 import javax.swing.table.TableModel;
 
+import javafx.application.Platform;
+import javafx.embed.swing.JFXPanel;
+import javafx.geometry.Insets;
+import javafx.geometry.Side;
+
 import org.opencv.core.Mat;
+
+import weka.classifiers.Classifier;
+import weka.classifiers.bayes.NaiveBayes;
+import weka.classifiers.functions.*;
+import weka.classifiers.evaluation.Evaluation;
+import weka.classifiers.functions.MultilayerPerceptron;
+import weka.core.Instances;
+import weka.core.Utils;
 
 class TestingPanel extends JPanel implements ActionListener, Constants{
 	
-	
+	final String ann="ANN";
+	final String svm="SVM";
+	final String nb="NB";
 	private ArrayList<Shorthand> testingSamples;
 	private ClassyButton  selectFolder1,selectFolder2,selectDest, run,crop;
-	private ClassyButton viewConfButton, viewANN, viewSVM, viewBN;
+	private ClassyButton viewConfButton, viewANN, viewSVM, viewBN, viewResults;
 	private MainPanel1 card;
 	private JButton backButton;
 	private JComboBox setList;
-	private JDialog d;
+	private JDialog d, resultsDialog;
 	private JFileChooser srcFolder, destFolder,tFolder;
 	private JLabel title, heading, rLabel;
 	private JLabel selectLabel1,selectLabel2, selectData;
@@ -59,31 +97,54 @@ class TestingPanel extends JPanel implements ActionListener, Constants{
 	private JPanel pPanel,tPanel;
 	private JPanel navBar;
 	private JPanel resultsPanel, predictedPanel, cPanel, aPanel;
-	private JRadioButton train,test;
+	private JLabel status;
+	private JRadioButton train,test,eval;
 	private JTable resultsTable, cTable, accuracyTable, summaryTable;
 	private JTextArea textArea;
 	private JTextField folder1,folder2, destination;
+	private JTextArea console;
 	private Preprocessing p;
 	private String[] wordClasses;
 	private TestingResult res;
 	private WordDB db;
 	private WordRecognizer r;
-	
+	private Task task;
+	private JFXPanel aGraphPanel,pGraphPanel;
+	private LineChart<String,Number> lineChart;
+	private Evaluation evalANN, evalNB, evalSVM;
+	private double[] trainingTime;
+    Scene scene=null;
+     CategoryAxis xAxis = null;
+	 NumberAxis yAxis = null;
+	 BarChart<String,Number> bc = null;
+	 	
 	public TestingPanel(MainPanel1 card){
 		this.setBackground(Color.white);
 		this.setLayout(null);
 		this.card= card;
+		db= new WordDB();
+		wordClasses= new String[NUM_CLASSES];
+		for(int i=0;i<NUM_CLASSES;i++){
+			try {
+				wordClasses[i] = db.getWord(i+1);
+			} catch (ClassNotFoundException | SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 		addHeaderComponents();
 		addComponents();
 		p= new Preprocessing(NUM_CLASSES);
-		db= new WordDB();
+		
 		testingSamples= new ArrayList<Shorthand>();
 		r= new WordRecognizer();
+		
+		
 	}
 	private void addComponents(){
 		//preprocess panel components
 		pPanel = new JPanel();
-		pPanel.setBounds(20, 160, 300, 180);
+		pPanel.setBounds(20, 150, 310, 180);
 		pPanel.setLayout(null);
 		this.add(pPanel);
 		
@@ -138,21 +199,31 @@ class TestingPanel extends JPanel implements ActionListener, Constants{
 		
 		//train and test panel components
 		tPanel = new JPanel();
-		tPanel.setBounds(20, 360, 300, 180);
+		tPanel.setBounds(20, 340, 310, 210);
+//		tPanel.setBackground(Color.red);
 		tPanel.setLayout(null);
 		this.add(tPanel);
 		
+		status= new JLabel("");
+		//status.setBackground(Color.red);
+		status.setBounds(30, 10, 250, 30);
+        tPanel.add(status);
+        
 		train= new JRadioButton("Train");
 		test= new JRadioButton("Test");
-		
+		eval = new JRadioButton("Evaluate Models");
 		ButtonGroup group = new ButtonGroup();
         group.add(train);
         group.add(test);
-        JPanel radioPanel = new JPanel(new GridLayout(1, 0));
+        group.add(eval);
+        GridLayout layout = new GridLayout(1, 0);
+        JPanel radioPanel = new JPanel();
+      //  train.setBounds(0,0 , 10, 30);
         radioPanel.add(train);
         radioPanel.add(test);
+        radioPanel.add(eval);
         
-        radioPanel.setBounds(60, 30, 200, 30);
+        radioPanel.setBounds(35, 15, 250, 30);
         tPanel.add(radioPanel);
         
         tFolder = new JFileChooser();
@@ -160,16 +231,26 @@ class TestingPanel extends JPanel implements ActionListener, Constants{
 	    tFolder.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 		
 		folder2= new JTextField(10);
-		folder2.setBounds(30, 60, 130, 25);
+		folder2.setBounds(15, 55, 120, 25);
 		tPanel.add(folder2);
 		
-		selectFolder2 = new ClassyButton("Select Folder", "white");
-		selectFolder2.setBounds(170, 60, 110, 25);
+		selectFolder2 = new ClassyButton("Browse", "white");
+		selectFolder2.setBounds(140, 55, 60, 25);
+		selectFolder2.setMargin(new java.awt.Insets(0, 2,0, 2));
 		tPanel.add(selectFolder2);
 		
 		run= new ClassyButton("Run", "blue");
-		run.setBounds(100, 100, 100, 30);
+		run.setBounds(210, 55, 90, 25);
 		tPanel.add(run);
+		
+		console= new JTextArea();		
+		console.setEditable(false);
+		console.setMargin(new java.awt.Insets(5, 5, 5, 5));
+		JScrollPane scrolltextArea = new JScrollPane(console);
+		scrolltextArea.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		
+		scrolltextArea.setBounds(10, 90, 290, 100);
+		tPanel.add(scrolltextArea);
 		
 		selectFolder1.addActionListener(this);
 		selectFolder2.addActionListener(this);
@@ -187,7 +268,7 @@ class TestingPanel extends JPanel implements ActionListener, Constants{
 		try {
 			image = ImageIO.read(new File("images/data2/result_0.jpg"));
 			ImageIcon imageIcon = new ImageIcon(image);
-			String[] columnNames = {"Image","Acutal","ANN","SVM","BN"};
+			String[] columnNames = {"Image","Acutal","ANN","SVM","NB"};
 			Object[] row= {imageIcon,"","" ,"", ""};
 		    Object[][] data = {row};
 		    TableModel model = new DefaultTableModel(data, columnNames);
@@ -220,6 +301,7 @@ class TestingPanel extends JPanel implements ActionListener, Constants{
 		//create panel for confusion matrix
 		cPanel= new JPanel();
 		cPanel.setLayout(null);
+		
 		cTable= new JTable(NUM_CLASSES+1,NUM_CLASSES+1){
 		    @Override
 		    public Component prepareRenderer(TableCellRenderer renderer, int row, int col) {
@@ -235,18 +317,38 @@ class TestingPanel extends JPanel implements ActionListener, Constants{
 		        	else {
 		            comp.setBackground(Color.white);
 		        	}
+		        	
+		        	if (getSelectedRow() == row) {
+		        		if( row+1== col){
+			        		comp.setBackground(Color.GREEN);
+			        	}
+		        		else{
+		        			comp.setBackground(Color.lightGray);  
+		        		}       	 
+	                }
 		        return comp;
 		    }
 		};
+		TableColumn column = null;
+	    for (int i = 0; i <= NUM_CLASSES; i++) {
+	        column = cTable.getColumnModel().getColumn(i);
+	        if (i == 0) {
+	            column.setPreferredWidth(50); //sport column is bigger
+	        } else {
+	            column.setPreferredWidth(30);
+	        }
+	    }  
+	   
+		JScrollPane scroll2= new JScrollPane(cTable, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+		cTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+		//scroll2.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS);
 		
-		JScrollPane scroll2= new JScrollPane(cTable);
+		scroll2.setBounds(50, 70, 1100, 550);
+		cPanel.add(scroll2);
 		
-		scroll2.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS);
-		scroll2.setBounds(100, 100, 1000, 550);
-		//cPanel.add(scroll2);
 		viewANN= new ClassyButton("ANN", "blue");
 		viewSVM= new ClassyButton("SVM", "orange");
-		viewBN= new ClassyButton("BN", "blue");
+		viewBN= new ClassyButton("NB", "blue");
 		
 		viewANN.setBounds(400, 20, 100, 30);
 		viewSVM.setBounds(550, 20, 100, 30);
@@ -269,6 +371,43 @@ class TestingPanel extends JPanel implements ActionListener, Constants{
 		d.add(viewSVM);
 		d.add(viewBN);
 		
+		resultsDialog = new JDialog();
+		//resultsDialog.setLayout(null);
+		resultsDialog.setTitle("Confusion Matrices");
+		resultsDialog.setSize(new Dimension(800, 700));
+		c= resultsDialog.getContentPane();
+		
+		
+		pGraphPanel = new JFXPanel();
+		Platform.runLater(new Runnable(){
+            @Override
+            public void run() { 
+				final CategoryAxis xAxis = new CategoryAxis();
+				final NumberAxis yAxis = new NumberAxis(0,100, 10);
+				xAxis.setLabel("Word");       
+				yAxis.setLabel("Recognition rate (%)");     
+				lineChart = new LineChart<String,Number>(xAxis,yAxis);
+
+			        for(int i=0;i<3 ;i++){
+				       XYChart.Series series = new XYChart.Series();
+				       switch(i){
+				       case 0: series.setName("ANN");break;
+				       case 1: series.setName("SVM");break;
+				       case 2: series.setName("NB");break;
+				       }
+				       for(int j=0;j<NUM_CLASSES;j++){
+				    	   series.getData().add(new XYChart.Data(wordClasses[j], 0));
+						}
+				       lineChart.getData().add(series);
+			        }
+					
+			        lineChart.getStylesheets().add("chart.css");
+			        Scene scene  = new Scene(lineChart,800,600);
+		        pGraphPanel.setScene(scene);
+            }
+        });
+		//pGraphPanel.setBounds(20,20,700,400);
+		c.add(pGraphPanel);
 		
 		//create panel and table for accuracy results
 		aPanel = new JPanel();
@@ -279,29 +418,65 @@ class TestingPanel extends JPanel implements ActionListener, Constants{
 	    TableModel model = new DefaultTableModel(data, columnNames);
 	    accuracyTable = new JTable(model);
 	    JScrollPane scroll3= new JScrollPane(accuracyTable);
-	    scroll3.setBounds(5, 180, 380, 200);
-	    aPanel.add(scroll3);
+	    scroll3.setBounds(5, 240, 380, 200);
+	    //aPanel.add(scroll3);
 	    
-	    String[] columnNames2 = {" ","ANN","SVM","BN"};
-	    Object[][] data2 = {{"ACCURACY","","" ,""},{"PRECISION","","" ,""},{"RECALL","","" ,""} };
+	    String[] columnNames2 = {" ","ANN","SVM","NB"};
+	    Object[][] data2 = {{"ACCURACY","","" ,""},{"BUILD TIME","","" ,""},{"RECALL","","" ,""} };
 	    model = new DefaultTableModel(data2, columnNames2);
 	    TableModel model2 = new DefaultTableModel(data2, columnNames2);
 	    summaryTable = new JTable(model2);
 	    JScrollPane scroll4= new JScrollPane(summaryTable);
-	    scroll4.setBounds(10, 30, 380, 70);
+	    scroll4.setBounds(10, 250, 380, 70);
 	    aPanel.add(scroll4);
 	    
 	    
 	    viewConfButton= new ClassyButton("View Confusion Matrix", "blue");
-	    viewConfButton.setBounds(200, 120, 200, 30);
+	    viewConfButton.setBounds(200, 350, 180, 30);
 	    viewConfButton.addActionListener(this);
 	    aPanel.add(viewConfButton);
+
+	    viewResults= new ClassyButton("View all results", "blue");
+	    viewResults.setBounds(20, 350, 160, 30);
+	    viewResults.addActionListener(this);
+	    aPanel.add(viewResults);
+	   
+		aGraphPanel = new JFXPanel();
+		Platform.runLater(new Runnable(){
+            @Override
+            public void run() { 
+        	   xAxis = new CategoryAxis();
+        		yAxis = new NumberAxis(0,100, 10);
+        		bc = new BarChart<String,Number>(xAxis,yAxis);
+				bc.setTitle("Recognition Rate Comparison");
+		        xAxis.setLabel("ML");       
+		        yAxis.setLabel("Recognition rate");
+		        scene = new Scene(bc,320,200);    
+                XYChart.Series series1 = new XYChart.Series();
+                series1.getData().add(new XYChart.Data(ann, 2));
+		        series1.getData().add(new XYChart.Data(svm, 3));
+		        series1.getData().add(new XYChart.Data(nb, 6));
+		        bc.getData().add(series1);
+		      //  bc.setStyle("CHART_COLOR_1: #e9967a;");
+		        
+		       bc.getStylesheets().add("chart.css");
+		        aGraphPanel.setScene(scene);
+            }
+        });
+
+		
+		aGraphPanel.setBackground(Color.green);
+		aGraphPanel.setBounds(20,20,360,200);
+		aPanel.add(aGraphPanel);
 	    
+		//System.out.println(aGraphPanel.getScene().rootProperty());
 	    resultsPanel.add(aPanel, "Accuracy");
 		//resultsPanel.add(cPanel, "Confusion");
 		resultsPanel.add(predictedPanel, "Predicted");
 		resultsPanel.setBounds(350, 150, 400, 400);
 		this.add(resultsPanel);
+		
+		
 		
 //		CardLayout cl = (CardLayout)(this.card.getLayout());
 //        cl.show(this.card, "Document");
@@ -406,13 +581,13 @@ class TestingPanel extends JPanel implements ActionListener, Constants{
 	 * using the WordRecognizerClass
 	 * 
 	 */
-	private void recognizeTestingData(){
+	private void recognizeTestingData() throws ClassNotFoundException, IOException, SQLException{
 		for(int i=0;i<testingSamples.size();i++){
 			try {
 				Shorthand word=testingSamples.get(i);
 				r.recognize(word);
 				System.out.println(word.annRes +" "+word.svmRes+" "+ word.bnRes);
-			} catch (ClassNotFoundException | IOException | SQLException e) {
+			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
@@ -494,6 +669,31 @@ class TestingPanel extends JPanel implements ActionListener, Constants{
 		}
 		
 	}
+	/**
+	 * fills 'cTable' with the values in confMatrix
+	 * 
+	 * @param confMatrix  Mat - a result from TestingResult 'res'
+	 */
+	public void fillConfTable(double[][] confMatrix){
+		//initialize table header
+		JTableHeader header= cTable.getTableHeader();
+		for(int i=0;i<cTable.getColumnCount()-1;i++){
+			TableColumn column1 = cTable.getTableHeader().getColumnModel().getColumn(i+1);
+			column1.setHeaderValue(wordClasses[i]);
+		}
+		System.out.println(cTable.getColumnCount());
+		//fill the first column with classes
+		
+		for(int i=0;i<wordClasses.length;i++){
+			for(int j=0;j< wordClasses.length;j++){
+				cTable.setValueAt(wordClasses[i], i, 0); 
+				cTable.setValueAt(confMatrix[i][j],i,j+1);
+				
+			}
+		}
+		
+	}
+	
 	@Override
 	public void actionPerformed(ActionEvent e) {
 		// TODO Auto-generated method stub
@@ -530,59 +730,30 @@ class TestingPanel extends JPanel implements ActionListener, Constants{
 		else if(e.getSource()==run){
 			String path= folder2.getText();
 			if(train.isSelected()){
-				
-				//this.readImages2(path);
-				int trainingSamples=p.getAllFeatures2(path, "training_data");
-				File folder= new File(path);
-//				int classes= folder.listFiles().length;
-
-				Training train= new Training(NUM_CLASSES, trainingSamples);
+			
+				//reset graph and summary table
+				resetResults();
+				TrainTask trainTask= new TrainTask(this, path);
+				//task.addPropertyChangeListener(this);
+				trainTask.execute();
+				run.setEnabled(false);
 
 			}
 			else if(test.isSelected()){
-//				Preprocessing p= new Preprocessing(30);
-//				int testingSamples= p.getAllFeatures(path, "testing_data");
-//				System.out.println(testingSamples);
-//				ML test = new ML( testingSamples, 30);
-				
-				
-				try {
-					this.readImages2(path);
-					System.out.println(Arrays.toString(wordClasses));
+				TestTask testTask= new TestTask(this, path);
+				testTask.execute();
+				run.setEnabled(false);
+		
+			}
+			else if(eval.isSelected()){
+				//read the images
+				//p.getAllFeatures2(path, "cross_validation_data");
+				task = new Task(this);
+				//task.addPropertyChangeListener(this);
+				task.execute();
+				run.setEnabled(false);
 
-					this.recognizeTestingData();
-					res= new TestingResult(wordClasses, testingSamples);
-					
-					//deletes data in resultsTable
-					this.deleteTableRows();
-					
-					//display results in table
-					this.displayResults();
-					this.displayAccuracy(res);
-					cTable.setModel(new DefaultTableModel(wordClasses.length,wordClasses.length+1));
-					Mat svmConf= res.getConfusinMatrix("svm");
-					this.fillConfTable(svmConf);
 				
-				} catch (ClassNotFoundException | SQLException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-				
-//				//previous do not edit
-//				//read images
-//				this.readImages(path);
-//				this.recognizeTestingData();
-//				res= new TestingResult(wordClasses, testingSamples);
-//				
-//				//deletes data in resultsTable
-//				this.deleteTableRows();
-//				
-//				//display results in table
-//				this.displayResults();
-//				this.displayAccuracy(res);
-//				Mat svmConf= res.getConfusinMatrix("svm");
-//				this.fillConfTable(svmConf);
-//				
 			}
 		}
 		//crop datasets
@@ -590,6 +761,9 @@ class TestingPanel extends JPanel implements ActionListener, Constants{
 			 String sourcePath = folder1.getText().replace("\\", "/")+"/";
 			 String destinationPath= destination.getText().replace("\\", "/")+"/";
 			 p.cropImages(setList.getSelectedIndex()+1,sourcePath, destinationPath);
+		 }
+		 else if(e.getSource()== viewResults){
+			 resultsDialog.setVisible(true);
 		 }
 		 else if(e.getSource()== viewConfButton){
 			 d.setVisible(true);
@@ -602,22 +776,300 @@ class TestingPanel extends JPanel implements ActionListener, Constants{
 			 viewSVM.setColor("blue");
 			 viewBN.setColor("blue");
 			 
-			 this.fillConfTable(res.getConfusinMatrix("ann"));
+			 this.fillConfTable(evalANN.confusionMatrix());
 		 }
 		 else if(e.getSource()== viewSVM){
 			 
 			 viewSVM.setColor("orange");
 			 viewBN.setColor("blue");
 			 viewANN.setColor("blue");
-			 this.fillConfTable(res.getConfusinMatrix("svm"));
+			 this.fillConfTable(evalSVM.confusionMatrix());
 		 }
 		 else if(e.getSource()== viewBN){
 			 viewBN.setColor("orange");
 			 viewANN.setColor("blue");
 			 viewSVM.setColor("blue");
-			 this.fillConfTable(res.getConfusinMatrix("bn"));
+			 this.fillConfTable(evalNB.confusionMatrix());
 		 }
 	}
+	private void resetResults() {
+		// TODO Auto-generated method stub
+		//reset value in summary table
+		for(int i=1;i<4;i++){
+			summaryTable.setValueAt(0, 0, i);
+			summaryTable.setValueAt(0, 1, i);
+		}
+		Platform.runLater(new Runnable(){
+			@Override
+			public void run() {	
+				bc.getData().get(0).getData().get(0).setYValue(0);
+				bc.getData().get(0).getData().get(1).setYValue(0);
+				bc.getData().get(0).getData().get(2).setYValue(0);      
+			
+			}
+		});
+		
+	}
+	class Task extends SwingWorker<Void, String> {
+		 TestingPanel panel;
+		 public Task(TestingPanel panel){
+			 this.panel = panel;
+		 }
+		 @Override
+		 public Void doInBackground() {
+			BufferedReader reader;
+			try {
+				publish("Reading data...");
+				
+				reader = new BufferedReader(new FileReader("cross_validation_data.arff"));
+				final Instances trainingdata = new Instances(reader);
+				reader.close();
+				// setting class attribute
+				trainingdata.setClassIndex(13);
+				trainingdata.randomize(new Random(1));
+				long startTime = System.nanoTime();
 
+				publish("Training Naive Bayes Classifier...");
+					
+				NaiveBayes nb = new NaiveBayes();
+				startTime = System.nanoTime();
+				nb.buildClassifier(trainingdata);
+				double runningTimeNB = (System.nanoTime() - startTime)/1000000;
+				runningTimeNB /= 1000;
+				//saving the naive bayes model 
+				weka.core.SerializationHelper.write("naivebayes.model", nb);
+				System.out.println("running time"+runningTimeNB);
+				publish("Done training NB.\nEvaluating NB using 10-fold cross-validation...");
+				evalNB = new Evaluation(trainingdata);
+				evalNB.crossValidateModel(nb, trainingdata, 10, new Random(1));
+				publish("Done evaluating NB.");
+					
+				//System.out.println(evalNB.toSummaryString("\nResults for Naive Bayes\n======\n", false)); 
+					
+				MultilayerPerceptron mlp = new MultilayerPerceptron();
+				mlp.setOptions(Utils.splitOptions("-L 0.3 -M 0.2 -N 500 -V 0 -S 0 -E 20 -H a")); 
+				publish("Training ANN...");
+				startTime = System.nanoTime();
+				mlp.buildClassifier(trainingdata);
+				long runningTimeANN = (System.nanoTime() - startTime)/1000000;
+				runningTimeANN /= 1000;
+				//saving the MLP model
+				weka.core.SerializationHelper.write("mlp.model", mlp);
+
+				publish("Done training ANN.\nEvaluating ANN using 10-fold cross-validation...");
+				
+				evalANN = new Evaluation(trainingdata);
+				evalANN.evaluateModel(mlp, trainingdata);
+				//evalMLP.crossValidateModel(mlp, trainingdata, 10, new Random(1));
+				
+				publish("Done evaluating ANN.");
+				publish("Training SVM...");
+				SMO svm = new SMO();
+					
+				startTime = System.nanoTime();
+				svm.buildClassifier(trainingdata);
+				long runningTimeSVM = (System.nanoTime() - startTime)/1000000;
+				runningTimeSVM /= 1000;
+				weka.core.SerializationHelper.write("svm.model", svm);
+				publish("Done training SVM.\nEvaluating SVM using 10-fold cross-validation...");
+				evalSVM = new Evaluation(trainingdata);
+				evalSVM.evaluateModel(svm, trainingdata);
+				publish("Done evaluating SVM.");
+					
+				Platform.runLater(new Runnable(){
+					@Override
+					public void run() {	
+						bc.getData().get(0).getData().get(0).setYValue(evalANN.correct()/trainingdata.size()*100);
+						bc.getData().get(0).getData().get(1).setYValue(evalSVM.correct()/trainingdata.size()*100);
+						bc.getData().get(0).getData().get(2).setYValue(evalNB.correct()/trainingdata.size()*100);      
+					
+						for(int i=0;i<NUM_CLASSES;i++){
+							lineChart.getData().get(0).getData().get(i).setYValue(evalANN.recall(i)*100);
+							lineChart.getData().get(1).getData().get(i).setYValue(evalSVM.recall(i)*100);
+							lineChart.getData().get(2).getData().get(i).setYValue(evalNB.recall(i)*100);
+							
+						}
+					
+					}
+				});
+				
+				panel.fillConfTable(evalSVM.confusionMatrix());
+				
+				summaryTable.setValueAt(evalANN.correct()/trainingdata.size()*100., 0, 1);
+				summaryTable.setValueAt(evalSVM.correct()/trainingdata.size()*100, 0, 2);
+				summaryTable.setValueAt(evalNB.correct()/trainingdata.size()*100,0,3);
+				
+				summaryTable.setValueAt(runningTimeANN, 1, 1);
+				summaryTable.setValueAt(runningTimeSVM, 1, 2);
+				summaryTable.setValueAt(runningTimeNB,1,3);
+				
+				
+				
+				} catch (Exception e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+		    	return null;
+		    }
+		protected void process(List<String> chunks) {
+			for (final String string : chunks) {
+			     console.append(string+"\n");
+			}	 
+		};
+		@Override
+		public void done() {
+		  Toolkit.getDefaultToolkit().beep();
+		  run.setEnabled(true);
+		  console.append("Done evaluating models.\n");
+		}
+	 }
+	class TrainTask extends SwingWorker<Void, String> {
+		 TestingPanel panel;
+		 String path;
+		 public TrainTask(TestingPanel panel,String path){
+			 this.panel = panel;
+			 this.path = path;
+		 }
+		 @Override
+		 public Void doInBackground() {
+			BufferedReader reader;
+			publish("Computing features...");
+			int trainingSamples=p.getAllFeatures2(path, "training_data");
+			publish("Done computing features.");
+			File folder= new File(path);
+//			int classes= folder.listFiles().length;
+			try {
+				publish("Training models...");
+				Training train= new Training(NUM_CLASSES, trainingSamples, this.panel);
+				trainingTime =  train.getAllBuildTime();
+				publish("Training time:");
+				publish("ANN\t:  "+trainingTime[0]+" seconds");
+				publish("SVM\t:  "+trainingTime[1]+" seconds");
+				publish("NB\t:  "+trainingTime[2]+ " seconds");
+				
+				
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+		    	return null;
+		    }
+		protected void process(List<String> chunks) {
+			for (final String string : chunks) {
+			     console.append(string+"\n");
+			}	 
+		};
+		@Override
+		public void done() {
+		  Toolkit.getDefaultToolkit().beep();
+		  run.setEnabled(true);
+		  console.append("Done training models.\n");
+		}
+	 }
+	class TestTask extends SwingWorker<Void, String> {
+		 TestingPanel panel;
+		 String path;
+		 public TestTask(TestingPanel panel,String path){
+			 this.panel = panel;
+			 this.path = path;
+		 }
+		 @Override
+		 public Void doInBackground() {
+			BufferedReader reader;
+			publish("Computing features...");
+			int testingSamples=p.getAllFeatures2(path, "testing_data");
+		
+			try {
+				publish("Reading data...");
+				
+				reader = new BufferedReader(new FileReader("testing_data.arff"));
+				final Instances testingdata = new Instances(reader);
+				reader.close();
+				// setting class attribute
+				testingdata.setClassIndex(13);
+				testingdata.randomize(new Random(1));
+				long startTime = System.nanoTime();
+				Classifier ann = (Classifier) weka.core.SerializationHelper.read("mlp.model");
+				publish("Evaluating ANN...");
+				
+				
+				evalANN = new Evaluation(testingdata);
+				startTime= System.nanoTime();
+				evalANN.evaluateModel(ann, testingdata);
+				long runningTimeANN = (System.nanoTime() - startTime)/1000000;
+				//runningTimeANN /= 100;
+				
+				publish("Done evaluating ANN");
+				
+				publish("Evaluating SVM...");
+				Classifier svm = (Classifier) weka.core.SerializationHelper.read("svm.model");
+				
+				evalSVM = new Evaluation(testingdata);
+				startTime= System.nanoTime();
+				evalSVM.evaluateModel(svm, testingdata);
+				long runningTimeSVM = (System.nanoTime() - startTime)/1000000;
+				//runningTimeSVM /= 100;
+				publish("Done evaluating SVM");
+				
+				
+				
+				publish("Evaluating NB...");
+				Classifier nb = (Classifier) weka.core.SerializationHelper.read("naivebayes.model");
+				
+				evalNB = new Evaluation(testingdata);
+				startTime = System.nanoTime();
+				evalNB.evaluateModel(nb, testingdata);
+				long runningTimeNB = (System.nanoTime() - startTime)/1000000;
+				//runningTimeNB /= 100;
+				publish("Done evaluating ANN");
+				
+				Platform.runLater(new Runnable(){
+					@Override
+					public void run() {	
+						bc.getData().get(0).getData().get(0).setYValue(evalANN.correct()/testingdata.size()*100);
+						bc.getData().get(0).getData().get(1).setYValue(evalSVM.correct()/testingdata.size()*100);
+						bc.getData().get(0).getData().get(2).setYValue(evalNB.correct()/testingdata.size()*100);      
+					
+						for(int i=0;i<NUM_CLASSES;i++){
+							lineChart.getData().get(0).getData().get(i).setYValue(evalANN.recall(i)*100);
+							lineChart.getData().get(1).getData().get(i).setYValue(evalSVM.recall(i)*100);
+							lineChart.getData().get(2).getData().get(i).setYValue(evalNB.recall(i)*100);
+							
+						}
+					
+					}
+				});
+				
+				panel.fillConfTable(evalSVM.confusionMatrix());
+				
+				summaryTable.setValueAt(evalANN.correct()/testingdata.size()*100., 0, 1);
+				summaryTable.setValueAt(evalSVM.correct()/testingdata.size()*100, 0, 2);
+				summaryTable.setValueAt(evalNB.correct()/testingdata.size()*100,0,3);
+				
+				summaryTable.setValueAt(runningTimeANN, 1, 1);
+				summaryTable.setValueAt(runningTimeSVM, 1, 2);
+				summaryTable.setValueAt(runningTimeNB,1,3);
+				
+				
+				
+				} catch (Exception e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+		    	return null;
+		
+		    }
+		protected void process(List<String> chunks) {
+			for (final String string : chunks) {
+			     console.append(string+"\n");
+			}	 
+		};
+		@Override
+		public void done() {
+		  Toolkit.getDefaultToolkit().beep();
+		  run.setEnabled(true);
+		  console.append("Done training models.\n");
+		}
+	 }
 }
 

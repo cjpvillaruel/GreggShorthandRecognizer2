@@ -23,17 +23,17 @@ public class WordRecognizer implements Constants {
 	FeatureExtraction fextract;
 	double[] mean, stdDev;
 	public WordRecognizer(){
-		ml= new ML();
+		
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+		ml= new ML();
 		db= new WordDB();
 		fextract = new FeatureExtraction();
 		mean= new double[ATTRIBUTES];
 		stdDev= new double[ATTRIBUTES];
 	}
 	
-	public void recognize(Shorthand word) throws IOException, ClassNotFoundException, SQLException{
+	public void recognize(Shorthand word) throws Exception{
 		Mat featuresMat= fextract.getFeatures(word.getImage());
-	//	this.normalize(featuresMat);
 		double [] results=ml.predict(featuresMat,1);
 		word.annRes=db.getWord((int)results[0]);
 		word.svmRes= db.getWord((int)results[1]);
