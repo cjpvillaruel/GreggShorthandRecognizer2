@@ -807,8 +807,7 @@ class TestingPanel extends JPanel implements ActionListener, Constants{
 				bc.getData().get(0).getData().get(2).setYValue(0);      
 			
 			}
-		});
-		
+		});	
 	}
 	class Task extends SwingWorker<Void, String> {
 		 TestingPanel panel;
@@ -820,7 +819,6 @@ class TestingPanel extends JPanel implements ActionListener, Constants{
 			BufferedReader reader;
 			try {
 				publish("Reading data...");
-				
 				reader = new BufferedReader(new FileReader("cross_validation_data.arff"));
 				final Instances trainingdata = new Instances(reader);
 				reader.close();
